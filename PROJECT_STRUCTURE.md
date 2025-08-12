@@ -1,27 +1,28 @@
-# 📁 TestForge AI - Full-Stack Project Structure
+# 📁 TestForge AI - Clean Project Structure
 
-## ✅ **Complete Full-Stack Structure**
+## ✅ **Simplified Full-Stack Structure**
 
 ```
 TestForge_AI_TestCase_Generator/
 ├── 📚 Documentation
 │   ├── README.md                    # Main project documentation
 │   ├── ENHANCED_FEATURES.md         # Detailed feature documentation
+│   ├── DEPLOYMENT.md                # Deployment instructions
 │   └── PROJECT_STRUCTURE.md         # This file
 │
 ├── 🔧 Configuration & Setup
 │   ├── Makefile                     # Full-stack build automation
+│   ├── setup.sh                     # One-command setup script
 │   ├── .gitignore                   # Git ignore rules
-│   └── backend/.env.example         # Environment variables template
-│
-├── 🧪 Testing & Utilities
-│   ├── test_enhanced_system.py      # System testing script
-│   ├── interactive_explorer.py      # Interactive feature explorer
-│   └── system_analyzer.py           # Deep system analysis
+│   └── test_enhanced_system.py      # System testing script
 │
 ├── 🎨 Frontend Application (React)
 │   ├── frontend/package.json        # ✅ Frontend dependencies
 │   ├── frontend/tailwind.config.js  # ✅ Tailwind CSS configuration
+│   ├── frontend/postcss.config.js   # ✅ PostCSS configuration
+│   ├── frontend/.eslintrc.js        # ✅ ESLint configuration
+│   ├── frontend/.prettierrc         # ✅ Prettier configuration
+│   │
 │   ├── frontend/src/
 │   │   ├── App.js                   # ✅ Main React application
 │   │   ├── index.js                 # ✅ React entry point
