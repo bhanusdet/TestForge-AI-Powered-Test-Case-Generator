@@ -1,0 +1,36 @@
+# Web server
+flask
+flask-cors
+requests
+
+# Enhanced LLMs / Embeddings
+sentence-transformers>=2.2.2
+transformers>=4.21.0
+
+# Vector DB (ChromaDB) with persistence
+chromadb>=0.4.0
+
+# Enhanced text processing
+nltk>=3.8
+spacy>=3.6.0
+
+# Optional - if needed by chromadb telemetry
+posthog
+
+# OpenAI-compatible client (for Groq or future support)  
+httpx
+python-dotenv
+
+# Image processing / OCR
+Pillow
+pytesseract
+
+# PDF reading
+pdfplumber
+PyPDF2
+
+# Additional utilities for enhanced functionality
+numpy>=1.24.0
+pandas>=2.0.0
+scikit-learn>=1.3.0
+python-dateutil>=2.8.0

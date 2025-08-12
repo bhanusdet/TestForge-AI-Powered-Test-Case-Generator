@@ -1,0 +1,172 @@
+[
+  {
+    "userStory": "As a user, I want to manage product quantities from the Quantity Pop-up on SRP so that I can add, update, or remove items easily.",
+    "testCases": [
+      {
+        "id": "TC001",
+        "title": "Validate Quantity Pop-up is present on SRP",
+        "preconditions": "User is on SRP with available SKU.",
+        "steps": "1. Search for SKU\n2. On SRP, tap on 'Add to cart' of available SKU",
+        "expected": "1. Quantity Pop-up should be present\n2. Quantity list should be present in ascending order",
+        "priority": "High"
+      },
+      {
+        "id": "TC002",
+        "title": "Validate selection of quantity from Quantity Pop-up on SRP",
+        "preconditions": "User is on SRP with available SKU.",
+        "steps": "1. Search for SKU\n2. On SRP, tap on 'Add to cart'\n3. Select 1st present quantity from pop-up",
+        "expected": "1. Selected quantity should be highlighted\n2. Pop-up should disappear after 500ms\n3. Selected quantity should be reflected in product quantity button",
+        "priority": "High"
+      },
+      {
+        "id": "TC003",
+        "title": "Validate updating quantity from Quantity Pop-up on SRP",
+        "preconditions": "User has already selected a quantity for the SKU on SRP.",
+        "steps": "1. Search for SKU\n2. On SRP, tap 'Add to cart'\n3. Select 1st present quantity from pop-up\n4. Tap on quantity selection button\n5. Select 2nd present quantity from pop-up",
+        "expected": "1. Quantity Pop-up shows highlighted quantity already selected\n2. Updated quantity is highlighted\n3. Pop-up disappears after 500ms\n4. Updated quantity is reflected in product quantity button",
+        "priority": "High"
+      },
+      {
+        "id": "TC004",
+        "title": "Validate removing product quantity from Quantity Pop-up on SRP",
+        "preconditions": "User has already selected a quantity for the SKU on SRP.",
+        "steps": "1. Search for SKU\n2. On SRP, tap 'Add to cart'\n3. Select 1st present quantity from pop-up\n4. Tap quantity selection button\n5. Tap on 'Remove' button",
+        "expected": "1. Quantity Pop-up shows highlighted quantity\n2. After removing, no quantity is highlighted\n3. Pop-up disappears after 500ms\n4. 'Add to cart' button is present",
+        "priority": "High"
+      },
+      {
+        "id": "TC005",
+        "title": "Validate selected quantity on SRP is reflected on Cart Page",
+        "preconditions": "User has selected a quantity from Quantity Pop-up on SRP.",
+        "steps": "1. Search for SKU\n2. On SRP, tap 'Add to cart'\n3. Select 1st present quantity from pop-up\n4. Go to Cart Page",
+        "expected": "Selected quantity should be present on cart page against the same product",
+        "priority": "High"
+      },
+      {
+        "id": "TC006",
+        "title": "Validate selected quantity on SRP is reflected on PDP",
+        "preconditions": "User has selected a quantity from Quantity Pop-up on SRP.",
+        "steps": "1. Search for SKU\n2. On SRP, tap 'Add to cart'\n3. Select 1st present quantity from pop-up\n4. Go to PDP of the same product",
+        "expected": "Selected quantity should be present on PDP of the same product",
+        "priority": "High"
+      },
+      {
+        "id": "TC007",
+        "title": "Validate quantity list is scrollable in Quantity Pop-up on SRP",
+        "preconditions": "User is on SRP with available SKU.",
+        "steps": "1. Search for SKU\n2. On SRP, tap 'Add to cart'\n3. Scroll down in quantity list",
+        "expected": "Scroll happens and quantity numbers change in ascending order",
+        "priority": "High"
+      },
+      {
+        "id": "TC008",
+        "title": "Validate Quantity Pop-up closes on tapping cross icon on SRP",
+        "preconditions": "User is on SRP with Quantity Pop-up open.",
+        "steps": "1. Search for SKU\n2. On SRP, tap 'Add to cart'\n3. Tap cross icon",
+        "expected": "1. Pop-up closes\n2. 'Add to cart' button is present",
+        "priority": "High"
+      },
+      {
+        "id": "TC009",
+        "title": "Validate recommendation tag is shown in Quantity Pop-up on SRP",
+        "preconditions": "User is on SRP with available SKU.",
+        "steps": "1. Search for SKU\n2. On SRP, tap 'Add to cart'",
+        "expected": "Recommendation tag should be present on the recommended quantity",
+        "priority": "High"
+      },
+      {
+        "id": "TC010",
+        "title": "Validate discounted price is shown in Quantity Pop-up on SRP",
+        "preconditions": "User is on SRP with discounted SKU.",
+        "steps": "1. Search for SKU\n2. On SRP, tap 'Add to cart'",
+        "expected": "Discounted price should be present",
+        "priority": "High"
+      }
+    ]
+  },
+  {
+    "userStory": "As a user, I want to manage product quantities from the Quantity Pop-up on PDP so that I can add, update, or remove items easily.",
+    "testCases": [
+      {
+        "id": "TC011",
+        "title": "Validate Quantity Pop-up is present on PDP",
+        "preconditions": "User is on PDP with available SKU.",
+        "steps": "1. Search for SKU\n2. Go to PDP of available SKU\n3. Tap on 'Add to cart'",
+        "expected": "1. Quantity Pop-up should be present\n2. Quantity list should be present in ascending order",
+        "priority": "High"
+      },
+      {
+        "id": "TC012",
+        "title": "Validate selection of quantity from Quantity Pop-up on PDP",
+        "preconditions": "User is on PDP with available SKU.",
+        "steps": "1. Search for SKU\n2. On PDP, tap 'Add to cart'\n3. Select 1st present quantity from pop-up",
+        "expected": "1. Selected quantity should be highlighted\n2. Pop-up disappears after 500ms\n3. Selected quantity reflected in product quantity button",
+        "priority": "High"
+      },
+      {
+        "id": "TC013",
+        "title": "Validate updating quantity from Quantity Pop-up on PDP",
+        "preconditions": "User has already selected a quantity for the SKU on PDP.",
+        "steps": "1. Search for SKU\n2. On PDP, tap 'Add to cart'\n3. Select 1st present quantity from pop-up\n4. Tap quantity selection button\n5. Select 2nd present quantity from pop-up",
+        "expected": "1. Quantity Pop-up shows highlighted quantity\n2. Updated quantity is highlighted\n3. Pop-up disappears after 500ms\n4. Updated quantity reflected in product quantity button",
+        "priority": "High"
+      },
+      {
+        "id": "TC014",
+        "title": "Validate removing product quantity from Quantity Pop-up on PDP",
+        "preconditions": "User has already selected a quantity for the SKU on PDP.",
+        "steps": "1. Search for SKU\n2. On PDP, tap 'Add to cart'\n3. Select 1st present quantity from pop-up\n4. Tap quantity selection button\n5. Tap 'Remove' button",
+        "expected": "1. Quantity Pop-up shows highlighted quantity\n2. After removing, no quantity is highlighted\n3. Pop-up disappears after 500ms\n4. 'Add to cart' button is present",
+        "priority": "High"
+      },
+      {
+        "id": "TC015",
+        "title": "Validate selected quantity on PDP is reflected on Cart Page",
+        "preconditions": "User has selected a quantity from Quantity Pop-up on PDP.",
+        "steps": "1. Search for SKU\n2. On PDP, tap 'Add to cart'\n3. Select 1st present quantity from pop-up\n4. Go to Cart Page",
+        "expected": "Selected quantity should be present on cart page against the same product",
+        "priority": "High"
+      },
+      {
+        "id": "TC016",
+        "title": "Validate selected quantity on PDP is reflected on PDP of same product",
+        "preconditions": "User has selected a quantity from Quantity Pop-up on PDP.",
+        "steps": "1. Search for SKU\n2. On PDP, tap 'Add to cart'\n3. Select 1st present quantity from pop-up\n4. Go to PDP of same product",
+        "expected": "Selected quantity should be present on PDP of the same product",
+        "priority": "High"
+      },
+      {
+        "id": "TC017",
+        "title": "Validate quantity list is scrollable in Quantity Pop-up on PDP",
+        "preconditions": "User is on PDP with available SKU.",
+        "steps": "1. Search for SKU\n2. On PDP, tap 'Add to cart'\n3. Scroll down in quantity list",
+        "expected": "Scroll happens and quantity numbers change in ascending order",
+        "priority": "High"
+      },
+      {
+        "id": "TC018",
+        "title": "Validate Quantity Pop-up closes on tapping cross icon on PDP",
+        "preconditions": "User is on PDP with Quantity Pop-up open.",
+        "steps": "1. Search for SKU\n2. On PDP, tap 'Add to cart'\n3. Tap cross icon",
+        "expected": "1. Pop-up closes\n2. 'Add to cart' button is present",
+        "priority": "High"
+      },
+      {
+        "id": "TC019",
+        "title": "Validate recommendation tag is shown in Quantity Pop-up on PDP",
+        "preconditions": "User is on PDP with available SKU.",
+        "steps": "1. Search for SKU\n2. On PDP, tap 'Add to cart'",
+        "expected": "Recommendation tag should be present on the recommended quantity",
+        "priority": "High"
+      },
+      {
+        "id": "TC020",
+        "title": "Validate discounted price is shown in Quantity Pop-up on PDP",
+        "preconditions": "User is on PDP with discounted SKU.",
+        "steps": "1. Search for SKU\n2. On PDP, tap 'Add to cart'",
+        "expected": "Discounted price should be present",
+        "priority": "High"
+      }
+    ]
+  }
+]
