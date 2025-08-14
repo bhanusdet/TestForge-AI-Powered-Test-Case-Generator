@@ -1,4 +1,10 @@
+# =============================================================================
+# AI Test Case Generator - Git Ignore Configuration
+# =============================================================================
+
+# =============================================================================
 # Python
+# =============================================================================
 __pycache__/
 *.py[cod]
 *$py.class
@@ -22,57 +28,128 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+# =============================================================================
 # Virtual Environment
+# =============================================================================
 backend/venv/
 venv/
 env/
 ENV/
+.venv/
 
-# Environment variables
+# =============================================================================
+# Environment Variables & Secrets
+# =============================================================================
 backend/.env
 .env
+.env.local
+.env.*.local
+config/secrets.json
+*.key
 
+# =============================================================================
+# AI/ML & Database Files
+# =============================================================================
 # ChromaDB data
 backend/chroma_db/
+chroma_db/
 
-# IDE
+# Model downloads and cache
+models/
+.cache/
+.model_cache/
+transformers_cache/
+
+# Training data (if sensitive)
+training_data/
+sensitive_data/
+
+# =============================================================================
+# Generated Documentation & Reports  
+# =============================================================================
+# Generated PDFs (keep only in releases)
+*.pdf
+!README.pdf
+docs/generated/
+reports/
+
+# =============================================================================
+# Development & Testing
+# =============================================================================
+# Test files and temporary code
+test_*.py
+*_test.py
+temp_*.py
+temp/
+tmp/
+*.tmp
+scratch/
+playground/
+
+# Testing artifacts
+.coverage
+.pytest_cache/
+.tox/
+.nox/
+htmlcov/
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+
+# =============================================================================
+# IDE & Editor
+# =============================================================================
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
+.project
+.pydevproject
+.spyderproject
+.spyproject
 
-# OS
+# =============================================================================
+# Operating System
+# =============================================================================
 .DS_Store
 .DS_Store?
 ._*
 .Spotlight-V100
 .Trashes
+Icon?
 ehthumbs.db
 Thumbs.db
+desktop.ini
 
-# Logs
+# =============================================================================
+# Logs & Debug Files
+# =============================================================================
 *.log
 logs/
+debug.log
+error.log
+app.log
+flask.log
 
-# Temporary files
-temp/
-tmp/
-*.tmp
-
-# Testing
-.coverage
-.pytest_cache/
-.tox/
-.nox/
-
-# Documentation builds
+# =============================================================================
+# Documentation Builds
+# =============================================================================
 docs/_build/
 .sphinx/
+site/
+mkdocs_build/
 
+# =============================================================================
 # Jupyter Notebook
+# =============================================================================
 .ipynb_checkpoints
+*.ipynb
 
-# Node.js / React
+# =============================================================================
+# Node.js / React Frontend
+# =============================================================================
 frontend/node_modules/
 frontend/build/
 frontend/dist/
@@ -84,10 +161,71 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+.npm/
+.yarn/
 
 # Coverage directory used by tools like istanbul
 coverage/
 *.lcov
 
-# PyCharm
-.idea/
+# =============================================================================
+# Production & Deployment
+# =============================================================================
+# Deployment artifacts
+deployment/
+production/
+staging/
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# SSL certificates
+*.pem
+*.crt
+*.key
+ssl/
+
+# =============================================================================
+# Backup & Archive Files
+# =============================================================================
+*.bak
+*.backup
+*.old
+*.orig
+*.save
+*_backup.*
+backup/
+archives/
+
+# =============================================================================
+# Performance & Monitoring
+# =============================================================================
+profiling/
+*.prof
+memory_profiler/
+
+# =============================================================================
+# Package Managers
+# =============================================================================
+pip-log.txt
+pip-delete-this-directory.txt
+.pipenv/
+Pipfile.lock
+
+# =============================================================================
+# Project Specific
+# =============================================================================
+# Sample data that might contain sensitive info
+sample_private_data/
+user_uploads/
+uploads/
+attachments/
+
+# Generated files from analysis tools
+analysis_results/
+feedback_reports/
+quality_reports/
+
+# Migration files (if they contain sensitive data)
+migrations/backup/

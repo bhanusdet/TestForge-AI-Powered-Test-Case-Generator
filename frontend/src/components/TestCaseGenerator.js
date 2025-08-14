@@ -24,6 +24,9 @@ export default function TestCaseGenerator() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackRating, setFeedbackRating] = useState(5);
   const [feedbackComment, setFeedbackComment] = useState('');
+  const [feedbackCategories, setFeedbackCategories] = useState([]);
+  const [missingScenarios, setMissingScenarios] = useState('');
+  const [improvedTestCases, setImprovedTestCases] = useState([]);
 
   const API_BASE = process.env.NODE_ENV === 'production' 
     ? '/api/v1' 
@@ -78,18 +81,59 @@ export default function TestCaseGenerator() {
     if (!metadata?.story_id) return;
 
     try {
-      await axios.post(`${API_BASE}/feedback`, {
+      const feedbackData = {
         story_id: metadata.story_id,
         quality_score: feedbackRating,
-        feedback: feedbackComment
-      });
-      toast.success("🙏 Thank you for your feedback!");
+        feedback: feedbackComment,
+        feedback_categories: feedbackCategories,
+        missing_scenarios: missingScenarios ? missingScenarios.split(',').map(s => s.trim()) : [],
+        improved_testcases: improvedTestCases.length > 0 ? improvedTestCases : null
+      };
+
+      await axios.post(`${API_BASE}/feedback`, feedbackData);
+      toast.success("🙏 Thank you for your detailed feedback! This helps improve our AI.");
       setShowFeedback(false);
+      
+      // Reset all feedback states
       setFeedbackComment('');
       setFeedbackRating(5);
+      setFeedbackCategories([]);
+      setMissingScenarios('');
+      setImprovedTestCases([]);
     } catch (error) {
       toast.error("❌ Failed to submit feedback");
+      console.error('Feedback submission error:', error);
     }
+  };
+
+  const toggleFeedbackCategory = (category) => {
+    setFeedbackCategories(prev => 
+      prev.includes(category) 
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
+  };
+
+  const addImprovedTestCase = () => {
+    const newTestCase = {
+      id: `improved_${improvedTestCases.length + 1}`,
+      title: '',
+      preconditions: '',
+      steps: '',
+      expected: '',
+      priority: 'Medium'
+    };
+    setImprovedTestCases([...improvedTestCases, newTestCase]);
+  };
+
+  const updateImprovedTestCase = (index, field, value) => {
+    const updated = [...improvedTestCases];
+    updated[index][field] = value;
+    setImprovedTestCases(updated);
+  };
+
+  const removeImprovedTestCase = (index) => {
+    setImprovedTestCases(prev => prev.filter((_, i) => i !== index));
   };
 
   const exportCSV = () => {
@@ -392,66 +436,186 @@ export default function TestCaseGenerator() {
           )}
         </motion.div>
       </div>
+        {/* Enhanced Feedback Modal */}
+        {showFeedback && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">🎯 Help Us Improve!</h3>
+                <button
+                  onClick={() => setShowFeedback(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
-      {/* Feedback Modal */}
-      {showFeedback && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-lg p-6 max-w-md w-full"
-          >
-            <h3 className="text-lg font-semibold mb-4">Rate Test Case Quality</h3>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Quality Rating (1-5)
-              </label>
-              <div className="flex space-x-2">
-                {[1, 2, 3, 4, 5].map(rating => (
+              {/* Quality Rating */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Overall Quality Rating ⭐
+                </label>
+                <div className="flex space-x-2 mb-2">
+                  {[1, 2, 3, 4, 5].map(rating => (
+                    <button
+                      key={rating}
+                      onClick={() => setFeedbackRating(rating)}
+                      className={`p-2 rounded transition-colors ${
+                        feedbackRating >= rating ? 'text-yellow-500' : 'text-gray-300'
+                      }`}
+                    >
+                      <Star className="w-8 h-8 fill-current" />
+                    </button>
+                  ))}
+                </div>
+                <div className="text-sm text-gray-500">
+                  {feedbackRating === 1 && "😞 Poor - Needs major improvement"}
+                  {feedbackRating === 2 && "😐 Below Average - Several issues"}
+                  {feedbackRating === 3 && "🙂 Average - Good but could be better"}
+                  {feedbackRating === 4 && "😊 Good - Minor improvements needed"}
+                  {feedbackRating === 5 && "🤩 Excellent - Very satisfied!"}
+                </div>
+              </div>
+
+              {/* Feedback Categories */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  What aspects need improvement? (Select all that apply)
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    'Coverage', 'Edge Cases', 'Clarity', 'Completeness', 
+                    'Relevance', 'Priority', 'Steps Detail', 'Expected Results'
+                  ].map(category => (
+                    <button
+                      key={category}
+                      onClick={() => toggleFeedbackCategory(category)}
+                      className={`px-3 py-2 rounded-lg text-sm border transition-colors ${
+                        feedbackCategories.includes(category)
+                          ? 'bg-blue-100 border-blue-300 text-blue-700'
+                          : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Missing Scenarios */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Missing Scenarios (comma-separated)
+                </label>
+                <input
+                  type="text"
+                  value={missingScenarios}
+                  onChange={(e) => setMissingScenarios(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="e.g., mobile view, accessibility, performance"
+                />
+              </div>
+
+              {/* Comments */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Detailed Comments
+                </label>
+                <textarea
+                  value={feedbackComment}
+                  onChange={(e) => setFeedbackComment(e.target.value)}
+                  rows="4"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Share specific feedback to help our AI learn better..."
+                />
+              </div>
+
+              {/* Improved Test Cases Section */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-sm font-medium text-gray-700">
+                    💡 Add Your Improved Test Cases (Optional)
+                  </label>
                   <button
-                    key={rating}
-                    onClick={() => setFeedbackRating(rating)}
-                    className={`p-2 rounded ${
-                      feedbackRating >= rating ? 'text-yellow-500' : 'text-gray-300'
-                    }`}
+                    onClick={addImprovedTestCase}
+                    className="text-sm bg-green-100 text-green-700 px-3 py-1 rounded hover:bg-green-200"
                   >
-                    <Star className="w-6 h-6 fill-current" />
+                    + Add Test Case
                   </button>
+                </div>
+                
+                {improvedTestCases.map((testCase, index) => (
+                  <div key={index} className="border border-gray-200 rounded-lg p-4 mb-3 bg-gray-50">
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="font-medium text-gray-700">Test Case {index + 1}</h4>
+                      <button
+                        onClick={() => removeImprovedTestCase(index)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 gap-3">
+                      <input
+                        type="text"
+                        placeholder="Test Case Title"
+                        value={testCase.title}
+                        onChange={(e) => updateImprovedTestCase(index, 'title', e.target.value)}
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Preconditions"
+                        value={testCase.preconditions}
+                        onChange={(e) => updateImprovedTestCase(index, 'preconditions', e.target.value)}
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                      />
+                      <textarea
+                        placeholder="Test Steps"
+                        value={testCase.steps}
+                        onChange={(e) => updateImprovedTestCase(index, 'steps', e.target.value)}
+                        rows="2"
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                      />
+                      <textarea
+                        placeholder="Expected Result"
+                        value={testCase.expected}
+                        onChange={(e) => updateImprovedTestCase(index, 'expected', e.target.value)}
+                        rows="2"
+                        className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                      />
+                    </div>
+                  </div>
                 ))}
               </div>
-            </div>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Comments (Optional)
-              </label>
-              <textarea
-                value={feedbackComment}
-                onChange={(e) => setFeedbackComment(e.target.value)}
-                rows="3"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Any feedback to improve future generations..."
-              />
-            </div>
-
-            <div className="flex space-x-3">
-              <button
-                onClick={submitFeedback}
-                className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Submit Feedback
-              </button>
-              <button
-                onClick={() => setShowFeedback(false)}
-                className="flex-1 border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+              {/* Action Buttons */}
+              <div className="flex space-x-3">
+                <button
+                  onClick={submitFeedback}
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all font-medium"
+                >
+                  🚀 Submit Enhanced Feedback
+                </button>
+                <button
+                  onClick={() => setShowFeedback(false)}
+                  className="flex-1 border border-gray-300 text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+              
+              <p className="text-xs text-gray-500 mt-3 text-center">
+                Your feedback directly improves our AI's ability to generate better test cases! 🙏
+              </p>
+            </motion.div>
+          </div>
+        )}
     </div>
   );
 }

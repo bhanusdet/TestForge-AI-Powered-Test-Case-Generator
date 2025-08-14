@@ -8,11 +8,130 @@ from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from datetime import datetime
 
-# your helpers - keep these files in the same folder
-from enhanced_rag_helper import rag_helper
-from image_helper import get_text_from_image
-from pdf_helper import get_text_from_pdf
-from prompt_engineering import AdvancedPromptEngineer
+# Smart import with graceful fallbacks
+def setup_rag_system():
+    """Setup RAG system with graceful fallback"""
+    try:
+        from enhanced_rag_helper import rag_helper
+        print("✅ RAG system loaded")
+        return rag_helper
+    except Exception as e:
+        print(f"⚠️ RAG system not available: {e}")
+        
+        # Create mock RAG helper
+        class MockRAGHelper:
+            def retrieve_similar_with_context(self, story, top_k=5):
+                return []
+            def add_generated_story_context(self, **kwargs):
+                pass
+            def add_feedback(self, **kwargs):
+                pass
+            def get_learning_stats(self):
+                return {"status": "RAG system not available"}
+        
+        return MockRAGHelper()
+
+def setup_image_processing():
+    """Setup image processing with graceful fallback"""
+    try:
+        from image_helper import get_text_from_image
+        print("✅ Image processing loaded")
+        return get_text_from_image
+    except Exception as e:
+        print(f"⚠️ Image processing not available: {e}")
+        def fallback_image_processor(filepath):
+            return "Image processing not available. Please install required dependencies."
+        return fallback_image_processor
+
+# Initialize systems
+rag_helper = setup_rag_system()
+get_text_from_image = setup_image_processing()
+
+# --- Lazy loader helpers for heavy libraries ---
+def lazy_import_transformers():
+    import importlib
+    return importlib.import_module('transformers')
+
+def lazy_import_sentence_transformers():
+    import importlib
+    return importlib.import_module('sentence_transformers')
+
+def lazy_import_pandas():
+    import importlib
+    return importlib.import_module('pandas')
+
+def lazy_import_sklearn():
+    import importlib
+    return importlib.import_module('sklearn')
+# Smart PDF processing with graceful fallbacks
+def setup_pdf_processing():
+    """Setup PDF processing with graceful fallbacks"""
+    global get_text_from_pdf, get_detailed_pdf_content
+    
+    # Try enhanced PDF helper first
+    try:
+        from enhanced_pdf_helper import get_text_from_pdf, get_detailed_pdf_content
+        print("✅ Using Enhanced PDF Processing")
+        return "enhanced"
+    except ImportError as e:
+        print("\u26a0\ufe0f Advanced PDF extraction features are disabled (PyMuPDF not installed). To enable them, run: pip install PyMuPDF")
+        
+        # Fallback to basic PDF processing
+        try:
+            import pdfplumber
+            
+            def get_text_from_pdf(filepath):
+                """Basic PDF text extraction fallback"""
+                text = ""
+                try:
+                    with pdfplumber.open(filepath) as pdf:
+                        for page in pdf.pages:
+                            page_text = page.extract_text()
+                            if page_text:
+                                text += page_text + "\n"
+                    return text.strip() if text else None
+                except Exception as e:
+                    print(f"PDF extraction error: {e}")
+                    return f"Error: Could not extract text from PDF - {str(e)}"
+            
+            def get_detailed_pdf_content(filepath):
+                """Basic fallback for detailed content"""
+                text = get_text_from_pdf(filepath)
+                return {
+                    'text_content': text or '',
+                    'tables': [],
+                    'images_text': [],
+                    'metadata': {},
+                    'structured_sections': [],
+                    'extraction_method': ['basic'],
+                    'quality_score': 0.5 if text else 0.0
+                }
+            
+            print("⚠️ Using Basic PDF Processing (pdfplumber only)")
+            return "basic"
+            
+        except ImportError:
+            # Ultra-minimal fallback
+            def get_text_from_pdf(filepath):
+                return "PDF processing not available. Please install: pip install pdfplumber PyMuPDF"
+            
+            def get_detailed_pdf_content(filepath):
+                return {
+                    'text_content': get_text_from_pdf(filepath),
+                    'tables': [],
+                    'images_text': [],
+                    'metadata': {},
+                    'structured_sections': [],
+                    'extraction_method': ['none'],
+                    'quality_score': 0.0
+                }
+            
+            print("❌ PDF processing not available - install dependencies")
+            return "none"
+
+# Initialize PDF processing
+PDF_PROCESSING_MODE = setup_pdf_processing()
+# Removed eager import of AdvancedPromptEngineer; now lazily imported in handlers for performance
 
 load_dotenv()
 
@@ -44,7 +163,7 @@ def call_groq(prompt: str):
         "Content-Type": "application/json"
     }
     body = {
-        "model": "llama3-8b-8192",
+        "model": "openai/gpt-oss-120b",
         "messages": [
             {"role": "user", "content": prompt}
         ],
@@ -170,7 +289,22 @@ def generate_test_cases():
                 if ext in ['png', 'jpg', 'jpeg', 'bmp', 'tiff', 'webp']:
                     text = get_text_from_image(tmp_path)  # your helper
                 elif ext == 'pdf':
-                    text = get_text_from_pdf(tmp_path)  # your helper
+                    # Use enhanced PDF processing
+                    text = get_text_from_pdf(tmp_path)
+                    
+                    # Log PDF processing results for monitoring
+                    try:
+                        detailed_result = get_detailed_pdf_content(tmp_path)
+                        quality_score = detailed_result.get('quality_score', 0.0)
+                        methods_used = detailed_result.get('extraction_method', [])
+                        tables_count = len(detailed_result.get('tables', []))
+                        images_count = len(detailed_result.get('images_text', []))
+                        
+                        print(f"📄 PDF processed: Quality={quality_score:.2f}, "
+                              f"Methods={methods_used}, Tables={tables_count}, "
+                              f"Images={images_count}, Size={len(text)} chars")
+                    except Exception as log_error:
+                        print(f"⚠️ PDF processing logging failed: {log_error}")
                 else:
                     text = None
 
@@ -196,7 +330,7 @@ def generate_test_cases():
     # Merge story + attachments
     full_story = "\n\n".join(filter(None, [user_story.strip()] + extracted_texts)).strip()
 
-    # Enhanced RAG retrieval with learning capabilities
+    # Enhanced RAG retrieval with learning capabilities (if available)
     try:
         similar_test_cases = rag_helper.retrieve_similar_with_context(full_story, top_k=5)
         print(f"✅ Retrieved {len(similar_test_cases)} similar test cases")
@@ -204,11 +338,36 @@ def generate_test_cases():
         print("RAG retrieval error:", e)
         similar_test_cases = []
 
-    # Build enhanced prompt with better context
+    # Build prompt (enhanced if RAG available, basic otherwise)
     story_context = build_enhanced_story_context(full_story)
-    prompt = AdvancedPromptEngineer.build_enhanced_prompt(
-        full_story, similar_test_cases, story_context
-    )
+    
+    try:
+        # Lazy import for cold start optimization
+        from prompt_engineering import AdvancedPromptEngineer
+        prompt = AdvancedPromptEngineer.build_enhanced_prompt(
+            full_story, similar_test_cases, story_context
+        )
+        print("\u2705 Using enhanced prompt engineering")
+    except Exception as e:
+        print(f"\u26a0\ufe0f Advanced prompting not available: {e}")
+        # Basic prompt fallback
+        prompt = f"""Generate comprehensive test cases for the following user story:
+
+User Story: {full_story}
+
+Please generate 3-5 detailed test cases with the following format for each:
+
+Test Case ID: TC_XXX
+Title: [Clear test case title]
+Preconditions: [What needs to be set up before testing]
+Test Steps: 
+1. [Step 1]
+2. [Step 2]
+3. [Step 3]
+Expected Result: [What should happen]
+Priority: [High/Medium/Low]
+
+Make sure test cases cover positive scenarios, negative scenarios, and edge cases."""
     print("\n===== FINAL PROMPT SENT TO GROQ =====\n")
     print(prompt)
     print("\n=====================================\n")
@@ -250,7 +409,7 @@ def generate_test_cases():
             "status": "Pending"
         }]
 
-    # 🧠 LEARNING: Add this interaction to the knowledge base for future improvement
+    # 🧠 LEARNING: Add this interaction to the knowledge base (if available)
     try:
         story_id = story_context.get('story_hash', 'unknown')
         rag_helper.add_generated_story_context(
@@ -260,7 +419,7 @@ def generate_test_cases():
         )
         print(f"✅ Added story to learning database: {story_id}")
     except Exception as e:
-        print(f"⚠️ Failed to add to learning database: {e}")
+        print(f"⚠️ Learning system not available: {e}")
 
     # Return enhanced response with metadata
     response = {
@@ -270,8 +429,9 @@ def generate_test_cases():
             "generated_count": len(test_cases),
             "similar_examples_used": len(similar_test_cases),
             "generation_timestamp": story_context.get('timestamp'),
-            "model_used": "llama3-8b-8192",
-            "enhanced_rag": True
+            "model_used": "openai/gpt-oss-120b",
+            "pdf_processing": PDF_PROCESSING_MODE,
+            "rag_available": hasattr(rag_helper, 'retrieve_similar_with_context') and callable(getattr(rag_helper, 'retrieve_similar_with_context', None))
         }
     }
     
@@ -296,6 +456,15 @@ def screenshot():
     try:
         if ext == 'pdf':
             text = get_text_from_pdf(tmp_path)
+            
+            # Log enhanced PDF processing results
+            try:
+                detailed_result = get_detailed_pdf_content(tmp_path)
+                quality_score = detailed_result.get('quality_score', 0.0)
+                methods_used = detailed_result.get('extraction_method', [])
+                print(f"📄 Screenshot PDF processed: Quality={quality_score:.2f}, Methods={methods_used}")
+            except Exception:
+                pass  # Don't fail if detailed processing fails
         else:
             text = get_text_from_image(tmp_path)
     finally:
@@ -314,7 +483,7 @@ def screenshot():
 @app.route('/api/v1/feedback', methods=['POST'])
 def submit_feedback():
     """
-    Submit feedback on generated test cases to improve future generations
+    🚀 Enhanced feedback submission with detailed learning data
     """
     try:
         data = request.get_json()
@@ -323,26 +492,53 @@ def submit_feedback():
         quality_score = data.get('quality_score')  # 1-5 scale
         user_feedback = data.get('feedback', '')
         improved_testcases = data.get('improved_testcases', [])
+        feedback_categories = data.get('feedback_categories', [])
+        missing_scenarios = data.get('missing_scenarios', [])
         
         if not story_id or quality_score is None:
             return jsonify({"error": "Missing story_id or quality_score"}), 400
         
-        # Add feedback to learning system
+        # Validate quality score
+        if not 1 <= quality_score <= 5:
+            return jsonify({"error": "Quality score must be between 1 and 5"}), 400
+        
+        # 🧠 Add enhanced feedback to learning system
         rag_helper.add_feedback(
             story_id=str(story_id),
             testcase_quality_score=float(quality_score),
             user_feedback=user_feedback,
-            improved_testcases=improved_testcases
+            improved_testcases=improved_testcases,
+            feedback_categories=feedback_categories,
+            missing_scenarios=missing_scenarios
         )
         
-        return jsonify({
-            "message": "Feedback submitted successfully",
+        # 📊 Prepare response with learning insights
+        feedback_insight = ""
+        if quality_score >= 4:
+            feedback_insight = "Thank you! Your positive feedback helps us identify high-quality patterns."
+        elif quality_score <= 2:
+            feedback_insight = "We appreciate your critical feedback - it helps us improve significantly."
+        else:
+            feedback_insight = "Your balanced feedback helps us fine-tune our generation process."
+        
+        response_data = {
+            "message": "Enhanced feedback submitted successfully",
             "story_id": story_id,
-            "quality_score": quality_score
-        })
+            "quality_score": quality_score,
+            "categories_received": len(feedback_categories),
+            "missing_scenarios_count": len(missing_scenarios),
+            "improved_testcases_count": len(improved_testcases) if improved_testcases else 0,
+            "learning_insight": feedback_insight,
+            "impact": "This feedback will improve future test case generation for similar stories."
+        }
+        
+        print(f"✅ Enhanced feedback received: Story {story_id}, Score: {quality_score}, "
+              f"Categories: {feedback_categories}, Missing: {missing_scenarios}")
+        
+        return jsonify(response_data)
         
     except Exception as e:
-        print(f"Feedback submission error: {e}")
+        print(f"Enhanced feedback submission error: {e}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -402,6 +598,174 @@ def get_similar_stories():
         
     except Exception as e:
         print(f"Similar stories error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v1/feedback-analysis', methods=['GET'])
+def get_feedback_analysis():
+    """
+    🔍 Get comprehensive feedback analysis and insights
+    """
+    try:
+        # Lazy import for performance
+        from feedback_analyzer import FeedbackAnalyzer
+        analyzer = FeedbackAnalyzer()
+        analysis = analyzer.analyze_feedback_patterns()
+        
+        return jsonify({
+            "status": "success",
+            "analysis": analysis,
+            "generated_at": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        print(f"Feedback analysis error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v1/quality-insights', methods=['GET'])
+def get_quality_insights():
+    """
+    📊 Get actionable insights for quality improvement
+    """
+    try:
+        # Get current learning stats
+        stats = rag_helper.get_learning_stats()
+        
+        # Calculate quality insights
+        insights = {
+            "current_performance": {
+                "learning_effectiveness": stats.get("system_health", {}).get("learning_effectiveness", 0.5),
+                "data_quality_score": stats.get("system_health", {}).get("data_quality_score", 0.0),
+                "feedback_coverage": min(1.0, stats.get("total_feedback_received", 0) / max(stats.get("total_stories_learned", 1), 1))
+            },
+            "recommendations": [],
+            "next_steps": []
+        }
+        
+        # Generate recommendations based on current state
+        effectiveness = insights["current_performance"]["learning_effectiveness"]
+        feedback_coverage = insights["current_performance"]["feedback_coverage"]
+        
+        if effectiveness < 0.6:
+            insights["recommendations"].append({
+                "priority": "HIGH",
+                "area": "Quality Improvement",
+                "issue": "Low learning effectiveness",
+                "action": "Focus on collecting feedback for low-performing test cases"
+            })
+        
+        if feedback_coverage < 0.3:
+            insights["recommendations"].append({
+                "priority": "MEDIUM", 
+                "area": "Data Collection",
+                "issue": "Insufficient feedback coverage",
+                "action": "Encourage more users to provide feedback on generated test cases"
+            })
+        
+        # Next steps based on system state
+        total_feedback = stats.get("total_feedback_received", 0)
+        if total_feedback < 10:
+            insights["next_steps"].append("Collect at least 10 feedback samples to enable meaningful analysis")
+        elif total_feedback < 50:
+            insights["next_steps"].append("Gather more diverse feedback across different domains")
+        else:
+            insights["next_steps"].append("Focus on fine-tuning based on identified patterns")
+        
+        return jsonify(insights)
+        
+    except Exception as e:
+        print(f"Quality insights error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# ---------- NEW: Enhanced PDF Analysis Endpoint ----------
+
+@app.route('/api/v1/analyze-pdf', methods=['POST'])
+def analyze_pdf():
+    """
+    🔍 Enhanced PDF analysis endpoint
+    Returns detailed PDF content analysis including tables, images, quality metrics
+    """
+    try:
+        if 'file' not in request.files:
+            return jsonify({"error": "No PDF file provided"}), 400
+        
+        file = request.files['file']
+        if not file or not file.filename:
+            return jsonify({"error": "No file selected"}), 400
+        
+        filename = secure_filename(file.filename)
+        if not filename.lower().endswith('.pdf'):
+            return jsonify({"error": "Only PDF files are supported"}), 400
+        
+        # Save to temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            file.save(tmp.name)
+            tmp_path = tmp.name
+        
+        try:
+            # Get detailed analysis
+            detailed_result = get_detailed_pdf_content(tmp_path)
+            
+            # Prepare response with analysis
+            analysis = {
+                "file_info": {
+                    "filename": filename,
+                    "processed_at": datetime.now().isoformat()
+                },
+                "extraction_summary": {
+                    "quality_score": detailed_result.get('quality_score', 0.0),
+                    "methods_used": detailed_result.get('extraction_method', []),
+                    "total_characters": len(detailed_result.get('text_content', '')),
+                    "sections_found": len(detailed_result.get('structured_sections', [])),
+                    "tables_count": len(detailed_result.get('tables', [])),
+                    "images_with_text": len(detailed_result.get('images_text', []))
+                },
+                "content": {
+                    "main_text": detailed_result.get('text_content', ''),
+                    "structured_sections": detailed_result.get('structured_sections', [])
+                },
+                "tables": detailed_result.get('tables', []),
+                "images_text": detailed_result.get('images_text', []),
+                "metadata": detailed_result.get('metadata', {}),
+                "recommendations": []
+            }
+            
+            # Add processing recommendations
+            quality_score = analysis["extraction_summary"]["quality_score"]
+            if quality_score < 0.3:
+                analysis["recommendations"].append({
+                    "type": "warning",
+                    "message": "Low extraction quality detected. Document might be scanned or have complex formatting."
+                })
+            elif quality_score < 0.6:
+                analysis["recommendations"].append({
+                    "type": "info", 
+                    "message": "Moderate extraction quality. Some content might need manual review."
+                })
+            else:
+                analysis["recommendations"].append({
+                    "type": "success",
+                    "message": "High quality extraction achieved."
+                })
+            
+            if len(analysis["tables"]) > 0:
+                analysis["recommendations"].append({
+                    "type": "info",
+                    "message": f"Found {len(analysis['tables'])} tables that have been processed and included."
+                })
+            
+            return jsonify(analysis)
+            
+        finally:
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
+                
+    except Exception as e:
+        print(f"PDF analysis error: {e}")
         return jsonify({"error": str(e)}), 500
 
 
