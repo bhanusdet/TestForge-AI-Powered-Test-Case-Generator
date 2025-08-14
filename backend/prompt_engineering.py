@@ -229,7 +229,7 @@ Focus on creating comprehensive test scenarios that ensure robust validation of 
 ## REQUIREMENTS
 
 ### Test Case Generation Requirements:
-- Generate 8-12 test cases covering different scenarios
+- Generate all possible test cases covering different scenarios
 - Each test case must have a unique ID following the pattern TC_[DOMAIN]_XXX
 - Include detailed, step-by-step instructions
 - Specify clear preconditions and expected results

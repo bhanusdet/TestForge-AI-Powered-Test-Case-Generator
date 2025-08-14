@@ -179,23 +179,37 @@ class EnhancedRAGHelper:
             return self._get_fallback_cases()
     
     def add_feedback(self, story_id: str, testcase_quality_score: float, 
-                    user_feedback: str = "", improved_testcases: List[Dict] = None):
+                    user_feedback: str = "", improved_testcases: List[Dict] = None,
+                    feedback_categories: List[str] = None, missing_scenarios: List[str] = None):
         """
-        Add user feedback to improve future generations
+        Enhanced feedback processing for better learning
         """
         try:
+            # 🎯 UPDATE ORIGINAL STORY QUALITY SCORE
+            self._update_story_quality_score(story_id, testcase_quality_score)
+            
+            # 📊 ANALYZE FEEDBACK CATEGORIES
+            analyzed_feedback = self._analyze_feedback_sentiment(user_feedback)
+            
             feedback_data = {
                 "story_id": story_id,
                 "quality_score": testcase_quality_score,
                 "user_feedback": user_feedback,
-                "improved_testcases": json.dumps(improved_testcases or []),  # Serialize
-                "feedback_date": datetime.now().isoformat()
+                "improved_testcases": json.dumps(improved_testcases or []),
+                "feedback_categories": json.dumps(feedback_categories or []),
+                "missing_scenarios": json.dumps(missing_scenarios or []),
+                "feedback_date": datetime.now().isoformat(),
+                "sentiment_analysis": json.dumps(analyzed_feedback),
+                "feedback_weight": self._calculate_feedback_weight(testcase_quality_score, user_feedback)
             }
             
-            # Create embedding from feedback
-            feedback_text = f"{user_feedback} Quality: {testcase_quality_score}"
+            # 🧠 CREATE RICHER EMBEDDING FROM COMPREHENSIVE FEEDBACK
+            feedback_text = self._create_enriched_feedback_text(
+                user_feedback, testcase_quality_score, feedback_categories, missing_scenarios
+            )
             embedding = self.model.encode(feedback_text).tolist()
             
+            # 💾 STORE IN FEEDBACK COLLECTION
             self.feedback_collection.add(
                 documents=[feedback_text],
                 embeddings=[embedding],
@@ -203,10 +217,166 @@ class EnhancedRAGHelper:
                 ids=[f"feedback_{story_id}_{datetime.now().timestamp()}"]
             )
             
-            logger.info(f"✅ Added feedback for story: {story_id}")
+            # 🔄 IF HIGH-QUALITY IMPROVED TEST CASES PROVIDED, ADD AS NEW EXAMPLES
+            if improved_testcases and testcase_quality_score >= 4.0:
+                self._add_improved_examples_to_knowledge_base(story_id, improved_testcases)
+            
+            # 📈 UPDATE DOMAIN-SPECIFIC QUALITY METRICS
+            self._update_domain_quality_metrics(story_id, testcase_quality_score, feedback_categories)
+            
+            logger.info(f"✅ Enhanced feedback processed for story: {story_id} (Score: {testcase_quality_score})")
             
         except Exception as e:
-            logger.error(f"Failed to add feedback: {e}")
+            logger.error(f"Failed to add enhanced feedback: {e}")
+    
+    def _update_story_quality_score(self, story_id: str, new_score: float):
+        """Update the quality score of the original story in the main collection"""
+        try:
+            # Get the original story
+            results = self.collection.get(
+                where={"story_id": story_id}
+            )
+            
+            if results and results['documents']:
+                # Update metadata with new feedback score
+                for i, id in enumerate(results['ids']):
+                    current_metadata = results['metadatas'][i]
+                    
+                    # Calculate weighted average if previous scores exist
+                    current_score = current_metadata.get('feedback_score', 3.0)
+                    feedback_count = current_metadata.get('feedback_count', 0)
+                    
+                    # Weighted average with recency bias
+                    updated_score = (current_score * feedback_count + new_score * 1.2) / (feedback_count + 1.2)
+                    
+                    # Update metadata
+                    updated_metadata = {**current_metadata}
+                    updated_metadata['feedback_score'] = round(updated_score, 2)
+                    updated_metadata['feedback_count'] = feedback_count + 1
+                    updated_metadata['last_feedback'] = datetime.now().isoformat()
+                    
+                    # Update in collection
+                    self.collection.update(
+                        ids=[id],
+                        metadatas=[updated_metadata]
+                    )
+                    
+                logger.info(f"📊 Updated story quality score: {story_id} -> {updated_score:.2f}")
+                
+        except Exception as e:
+            logger.error(f"Failed to update story quality score: {e}")
+    
+    def _analyze_feedback_sentiment(self, feedback_text: str) -> Dict:
+        """Analyze feedback sentiment and extract key insights"""
+        if not feedback_text:
+            return {"sentiment": "neutral", "key_issues": [], "suggestions": []}
+        
+        feedback_lower = feedback_text.lower()
+        
+        # 🎯 IDENTIFY COMMON FEEDBACK PATTERNS
+        quality_indicators = {
+            "positive": ["good", "great", "excellent", "comprehensive", "thorough", "detailed"],
+            "negative": ["poor", "bad", "incomplete", "missing", "lacking", "insufficient"],
+            "suggestions": ["should", "could", "need", "add", "include", "consider", "improve"]
+        }
+        
+        sentiment_score = 0
+        key_issues = []
+        suggestions = []
+        
+        for word in feedback_lower.split():
+            if word in quality_indicators["positive"]:
+                sentiment_score += 1
+            elif word in quality_indicators["negative"]:
+                sentiment_score -= 1
+                key_issues.append(word)
+            elif word in quality_indicators["suggestions"]:
+                suggestions.append(word)
+        
+        sentiment = "positive" if sentiment_score > 0 else "negative" if sentiment_score < 0 else "neutral"
+        
+        return {
+            "sentiment": sentiment,
+            "sentiment_score": sentiment_score,
+            "key_issues": key_issues,
+            "suggestions": suggestions,
+            "feedback_length": len(feedback_text)
+        }
+    
+    def _calculate_feedback_weight(self, quality_score: float, feedback_text: str) -> float:
+        """Calculate how much weight to give this feedback"""
+        base_weight = 1.0
+        
+        # 📏 MORE DETAILED FEEDBACK GETS MORE WEIGHT
+        if len(feedback_text) > 50:
+            base_weight += 0.3
+        elif len(feedback_text) > 20:
+            base_weight += 0.1
+        
+        # 🎯 EXTREME SCORES (VERY GOOD OR VERY BAD) GET MORE WEIGHT
+        if quality_score <= 2.0 or quality_score >= 4.5:
+            base_weight += 0.2
+        
+        return min(2.0, base_weight)  # Cap at 2.0
+    
+    def _create_enriched_feedback_text(self, feedback_text: str, quality_score: float, 
+                                     categories: List[str], missing_scenarios: List[str]) -> str:
+        """Create enriched text for better embedding"""
+        parts = [f"Quality: {quality_score}/5"]
+        
+        if feedback_text:
+            parts.append(f"Feedback: {feedback_text}")
+        
+        if categories:
+            parts.append(f"Categories: {', '.join(categories)}")
+        
+        if missing_scenarios:
+            parts.append(f"Missing: {', '.join(missing_scenarios)}")
+        
+        return " | ".join(parts)
+    
+    def _add_improved_examples_to_knowledge_base(self, original_story_id: str, improved_testcases: List[Dict]):
+        """Add user-improved test cases as high-quality examples"""
+        try:
+            # Get the original story
+            results = self.collection.get(where={"story_id": original_story_id})
+            
+            if results and results['documents']:
+                original_story = results['documents'][0]
+                original_metadata = results['metadatas'][0]
+                
+                # Create new entry with improved test cases
+                improved_metadata = {**original_metadata}
+                improved_metadata.update({
+                    "testCases": json.dumps(improved_testcases),
+                    "source": "user_improved",
+                    "feedback_score": 5.0,  # User-improved examples are high quality
+                    "original_story_id": original_story_id,
+                    "improvement_date": datetime.now().isoformat()
+                })
+                
+                embedding = self.model.encode(original_story).tolist()
+                
+                self.collection.add(
+                    documents=[original_story],
+                    embeddings=[embedding],
+                    metadatas=[improved_metadata],
+                    ids=[f"improved_{original_story_id}_{datetime.now().timestamp()}"]
+                )
+                
+                logger.info(f"📚 Added user-improved examples for story: {original_story_id}")
+                
+        except Exception as e:
+            logger.error(f"Failed to add improved examples: {e}")
+    
+    def _update_domain_quality_metrics(self, story_id: str, quality_score: float, categories: List[str]):
+        """Track quality metrics per domain for insights"""
+        try:
+            # This could be expanded to track domain-specific quality trends
+            # For now, we'll log it for future analytics
+            logger.info(f"📊 Domain quality update: {story_id} -> Score: {quality_score}, Categories: {categories}")
+        except Exception as e:
+            logger.error(f"Failed to update domain quality metrics: {e}")
     
     def _generate_story_id(self, story: str) -> str:
         """Generate unique ID for a story"""
@@ -261,29 +431,55 @@ class EnhancedRAGHelper:
                                  metadata: Dict, distance: float, query_domain: str, 
                                  query_keywords: List[str]) -> float:
         """
-        Calculate comprehensive relevance score for better ranking
+        🚀 ENHANCED relevance scoring with improved feedback integration
         """
-        # Base semantic similarity (lower distance = higher similarity)
-        semantic_score = max(0, 1 - distance)
+        # 🎯 Base semantic similarity (35% weight - reduced to make room for quality)
+        semantic_score = max(0, 1 - distance) * 0.35
         
-        # Domain matching bonus
+        # 🏢 Domain matching bonus (25% weight)
         candidate_domain = metadata.get('domain', 'general')
-        domain_bonus = 0.3 if query_domain == candidate_domain else 0
+        domain_score = 0.25 if query_domain == candidate_domain else 0.05
         
-        # Keyword overlap bonus
+        # 🔤 Keyword overlap bonus (15% weight)
         candidate_keywords_str = metadata.get('keywords', '')
         candidate_keywords = candidate_keywords_str.split(',') if candidate_keywords_str else []
         keyword_overlap = len(set(query_keywords) & set(candidate_keywords))
-        keyword_bonus = min(0.2, keyword_overlap * 0.05)
+        keyword_score = min(0.15, keyword_overlap * 0.03)
         
-        # Quality bonus from feedback
-        feedback_score = metadata.get('feedback_score', 0.5)
-        quality_bonus = (feedback_score - 0.5) * 0.2
+        # 🌟 ENHANCED Quality scoring from feedback (20% weight - INCREASED!)
+        feedback_score = metadata.get('feedback_score', 3.0)  # Default to 3.0 instead of 0.5
+        feedback_count = metadata.get('feedback_count', 0)
         
-        # Recency bonus for generated content
-        recency_bonus = 0.1 if metadata.get('source') == 'generated' else 0
+        # Quality bonus with confidence factor
+        if feedback_count >= 3:  # High confidence
+            quality_score = ((feedback_score - 3.0) / 2.0) * 0.20  # -0.20 to +0.20
+        elif feedback_count >= 1:  # Medium confidence
+            quality_score = ((feedback_score - 3.0) / 2.0) * 0.15  # -0.15 to +0.15
+        else:  # Low confidence - use default
+            quality_score = 0.05
         
-        total_score = semantic_score + domain_bonus + keyword_bonus + quality_bonus + recency_bonus
+        # 📈 User-improved examples get priority boost
+        if metadata.get('source') == 'user_improved':
+            quality_score += 0.10
+        
+        # ⏰ Recency bonus (5% weight)
+        source = metadata.get('source', 'sample')
+        if source == 'generated':
+            recency_score = 0.05
+        elif source == 'user_improved':
+            recency_score = 0.03  # Slightly less than generated but still recent
+        else:
+            recency_score = 0.01
+        
+        # 🎯 Calculate total score
+        total_score = semantic_score + domain_score + keyword_score + quality_score + recency_score
+        
+        # 🚀 Apply additional boosts for exceptional cases
+        if feedback_score >= 4.5 and feedback_count >= 2:
+            total_score *= 1.1  # 10% boost for consistently high-rated examples
+        elif feedback_score <= 2.0 and feedback_count >= 2:
+            total_score *= 0.8  # 20% penalty for consistently low-rated examples
+        
         return min(1.0, total_score)
     
     def _generate_domain_specific_edge_cases(self, domain: str, story: str) -> List[Dict]:
@@ -345,20 +541,165 @@ class EnhancedRAGHelper:
         ]
     
     def get_learning_stats(self) -> Dict[str, Any]:
-        """Get statistics about the learning system"""
+        """🚀 Enhanced learning statistics with detailed insights"""
         try:
             total_stories = self.collection.count()
             total_feedback = self.feedback_collection.count()
+            
+            # 📊 Get feedback quality distribution
+            feedback_quality_dist = self._get_feedback_quality_distribution()
+            
+            # 🎯 Get domain performance
+            domain_stats = self._get_domain_performance_stats()
+            
+            # 📈 Get improvement trends
+            improvement_trends = self._get_improvement_trends()
             
             return {
                 "total_stories_learned": total_stories,
                 "total_feedback_received": total_feedback,
                 "embedding_model": "all-mpnet-base-v2",
-                "last_updated": datetime.now().isoformat()
+                "last_updated": datetime.now().isoformat(),
+                "feedback_quality_distribution": feedback_quality_dist,
+                "domain_performance": domain_stats,
+                "improvement_trends": improvement_trends,
+                "system_health": {
+                    "status": "active" if total_feedback > 0 else "waiting_for_feedback",
+                    "learning_effectiveness": self._calculate_learning_effectiveness(),
+                    "data_quality_score": self._calculate_data_quality_score()
+                }
             }
         except Exception as e:
-            logger.error(f"Error getting stats: {e}")
+            logger.error(f"Error getting enhanced stats: {e}")
             return {"error": str(e)}
+    
+    def _get_feedback_quality_distribution(self) -> Dict:
+        """Get distribution of feedback quality scores"""
+        try:
+            feedback_results = self.feedback_collection.get()
+            
+            if not feedback_results['metadatas']:
+                return {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0}
+            
+            distribution = {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0}
+            
+            for metadata in feedback_results['metadatas']:
+                score = str(int(float(metadata.get('quality_score', 3))))
+                if score in distribution:
+                    distribution[score] += 1
+            
+            return distribution
+        except Exception as e:
+            logger.error(f"Error getting quality distribution: {e}")
+            return {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0}
+    
+    def _get_domain_performance_stats(self) -> Dict:
+        """Get performance statistics by domain"""
+        try:
+            story_results = self.collection.get()
+            
+            if not story_results['metadatas']:
+                return {}
+            
+            domain_stats = {}
+            
+            for metadata in story_results['metadatas']:
+                domain = metadata.get('domain', 'general')
+                feedback_score = metadata.get('feedback_score', 3.0)
+                feedback_count = metadata.get('feedback_count', 0)
+                
+                if domain not in domain_stats:
+                    domain_stats[domain] = {
+                        "story_count": 0,
+                        "avg_quality": 0,
+                        "total_feedback": 0
+                    }
+                
+                domain_stats[domain]["story_count"] += 1
+                domain_stats[domain]["total_feedback"] += feedback_count
+                
+                # Calculate weighted average
+                current_avg = domain_stats[domain]["avg_quality"]
+                story_count = domain_stats[domain]["story_count"]
+                domain_stats[domain]["avg_quality"] = (current_avg * (story_count - 1) + feedback_score) / story_count
+            
+            return domain_stats
+        except Exception as e:
+            logger.error(f"Error getting domain stats: {e}")
+            return {}
+    
+    def _get_improvement_trends(self) -> Dict:
+        """Analyze improvement trends over time"""
+        try:
+            feedback_results = self.feedback_collection.get()
+            
+            if not feedback_results['metadatas']:
+                return {"trend": "insufficient_data", "recent_avg": 3.0, "older_avg": 3.0}
+            
+            # Sort feedback by date
+            feedback_with_dates = []
+            for i, metadata in enumerate(feedback_results['metadatas']):
+                try:
+                    date_str = metadata.get('feedback_date', datetime.now().isoformat())
+                    date_obj = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                    quality_score = float(metadata.get('quality_score', 3.0))
+                    feedback_with_dates.append((date_obj, quality_score))
+                except:
+                    continue
+            
+            if len(feedback_with_dates) < 2:
+                return {"trend": "insufficient_data", "recent_avg": 3.0, "older_avg": 3.0}
+            
+            feedback_with_dates.sort(key=lambda x: x[0])
+            
+            # Split into older and recent halves
+            mid_point = len(feedback_with_dates) // 2
+            older_scores = [score for _, score in feedback_with_dates[:mid_point]]
+            recent_scores = [score for _, score in feedback_with_dates[mid_point:]]
+            
+            older_avg = sum(older_scores) / len(older_scores) if older_scores else 3.0
+            recent_avg = sum(recent_scores) / len(recent_scores) if recent_scores else 3.0
+            
+            trend = "improving" if recent_avg > older_avg + 0.1 else "declining" if recent_avg < older_avg - 0.1 else "stable"
+            
+            return {
+                "trend": trend,
+                "recent_avg": round(recent_avg, 2),
+                "older_avg": round(older_avg, 2),
+                "improvement_rate": round(recent_avg - older_avg, 2)
+            }
+        except Exception as e:
+            logger.error(f"Error getting improvement trends: {e}")
+            return {"trend": "error", "recent_avg": 3.0, "older_avg": 3.0}
+    
+    def _calculate_learning_effectiveness(self) -> float:
+        """Calculate how effectively the system is learning"""
+        try:
+            story_results = self.collection.get()
+            
+            if not story_results['metadatas']:
+                return 0.5
+            
+            high_quality_stories = sum(1 for metadata in story_results['metadatas'] 
+                                     if metadata.get('feedback_score', 3.0) >= 4.0)
+            total_stories = len(story_results['metadatas'])
+            
+            return round(high_quality_stories / total_stories if total_stories > 0 else 0.5, 2)
+        except:
+            return 0.5
+    
+    def _calculate_data_quality_score(self) -> float:
+        """Calculate overall data quality score"""
+        try:
+            feedback_count = self.feedback_collection.count()
+            story_count = self.collection.count()
+            
+            # Data quality based on feedback coverage
+            feedback_coverage = min(1.0, feedback_count / max(story_count, 1))
+            
+            return round(feedback_coverage, 2)
+        except:
+            return 0.0
 
 # Global instance
 rag_helper = EnhancedRAGHelper()
