@@ -1,6 +1,7 @@
 # prompt_engineering.py
 
 from typing import List, Dict, Any
+import re
 from datetime import datetime
 
 class AdvancedPromptEngineer:
@@ -8,16 +9,119 @@ class AdvancedPromptEngineer:
     Advanced prompt engineering for more accurate test case generation
     """
     
+
+    @staticmethod
+    def extract_requirements_from_story(story: str) -> Dict[str, Any]:
+        """
+        Extract explicit requirements and constraints from user story
+        """
+        requirements = {
+            'acceptance_criteria': [],
+            'business_rules': [],
+            'user_actions': [],
+            'system_behaviors': [],
+            'constraints': [],
+            'scope_boundaries': []
+        }
+
+        # Extract acceptance criteria
+        ac_patterns = [
+            r'acceptance criteria?:?\s*(.+?)(?=\n\n|\Z)',
+            r'given.+?when.+?then.+',
+            r'scenario:?\s*(.+?)(?=\n\n|\Z)',
+        ]
+
+        for pattern in ac_patterns:
+            matches = re.findall(pattern, story, re.IGNORECASE | re.DOTALL)
+            requirements['acceptance_criteria'].extend(matches)
+
+        # Extract user actions (I want to...)
+        action_pattern = r'I want to\s+(.+?)(?=\s+so that|\s+because|\.|$)'
+        user_actions = re.findall(action_pattern, story, re.IGNORECASE)
+        requirements['user_actions'] = user_actions
+
+        # Extract business value (so that...)
+        value_pattern = r'so that\s+(.+?)(?=\.|$)'
+        business_values = re.findall(value_pattern, story, re.IGNORECASE)
+        requirements['business_rules'] = business_values
+
+        # Extract constraints
+        constraint_patterns = [
+            r'must not\s+(.+?)(?=\.|$)',
+            r'should not\s+(.+?)(?=\.|$)',
+            r'cannot\s+(.+?)(?=\.|$)',
+            r'only\s+(.+?)(?=\.|$)',
+            r'within\s+\d+\s+\w+',  # time constraints
+            r'maximum\s+\d+',       # quantity constraints
+            r'minimum\s+\d+'        # quantity constraints
+        ]
+
+        for pattern in constraint_patterns:
+            matches = re.findall(pattern, story, re.IGNORECASE)
+            requirements['constraints'].extend(matches)
+
+        return requirements
+
+    @staticmethod
+    def validate_test_case_scope(test_case: Dict, story_requirements: Dict) -> Dict[str, Any]:
+        """
+        Validate if test case stays within story requirements
+        """
+        validation_result = {
+            'is_valid': True,
+            'score': 1.0,
+            'issues': [],
+            'suggestions': []
+        }
+
+        test_title = test_case.get('title', '').lower()
+        test_steps = test_case.get('steps', '').lower()
+        test_content = f"{test_title} {test_steps}".lower()
+
+        # Check if test relates to user actions
+        user_actions = story_requirements.get('user_actions', [])
+        if user_actions:
+            action_found = any(action.lower() in test_content for action in user_actions)
+            if not action_found:
+                validation_result['issues'].append("Test case doesn't relate to specified user actions")
+                validation_result['score'] -= 0.3
+
+        # Check for scope creep (testing features not mentioned)
+        scope_violations = [
+            'admin panel', 'database migration', 'api integration',
+            'third party', 'external system', 'reporting',
+            'analytics', 'backup', 'restore'
+        ]
+
+        for violation in scope_violations:
+            if violation in test_content and violation not in story_requirements.get('user_actions', []):
+                validation_result['issues'].append(f"Potential scope creep: {violation}")
+                validation_result['score'] -= 0.2
+
+        # Check constraints compliance
+        constraints = story_requirements.get('constraints', [])
+        for constraint in constraints:
+            if 'not' in constraint.lower() and constraint.lower().replace('not', '').strip() in test_content:
+                validation_result['issues'].append(f"Test violates constraint: {constraint}")
+                validation_result['score'] -= 0.4
+
+        validation_result['is_valid'] = validation_result['score'] >= 0.7
+        return validation_result
+
     @staticmethod
     def build_enhanced_prompt(story: str, similar_examples: List[Dict], 
                             story_context: Dict = None) -> str:
         """
         Build an enhanced prompt with better structure and context
         """
+
+        # Extract explicit requirements first
+        story_requirements = AdvancedPromptEngineer.extract_requirements_from_story(story)
         
         # Analyze story characteristics
         story_analysis = AdvancedPromptEngineer._analyze_story(story)
-        
+        story_analysis['requirements'] = story_requirements
+
         # Build context section
         context_section = AdvancedPromptEngineer._build_context_section(
             story_analysis, story_context
@@ -32,6 +136,8 @@ class AdvancedPromptEngineer:
         requirements_section = AdvancedPromptEngineer._build_requirements_section(
             story_analysis
         )
+
+        scope_constraints = AdvancedPromptEngineer._build_scope_constraints(story_requirements)
         
         prompt = f"""
 {context_section}
@@ -43,6 +149,8 @@ class AdvancedPromptEngineer:
 
 {examples_section}
 
+{scope_constraints}
+
 ## GENERATION INSTRUCTIONS:
 
 ### Quality Standards:
@@ -51,6 +159,8 @@ class AdvancedPromptEngineer:
 3. **Clarity**: Use clear, actionable language that any QA tester can follow
 4. **Coverage**: Include positive, negative, boundary, and edge test scenarios
 5. **Traceability**: Each test case should map back to specific story requirements
+
+### CRITICAL: Test cases must ONLY test what is explicitly mentioned in the user story. Do not test features, integrations, or functionality not described in the requirements.
 
 ### Test Case Categories to Include:
 - **Happy Path**: Normal user flow scenarios
@@ -76,8 +186,13 @@ For each test case, use EXACTLY this format:
 **Expected Result:** [Specific, measurable expected outcome]
 **Priority:** [Critical/High/Medium/Low based on story importance]
 **Category:** [Positive/Negative/Edge/Boundary/Security/Performance]
+**Requirement Mapping:** [Which specific requirement from the story this test validates]
 
-Remember: Generate comprehensive test cases that ensure the user story is thoroughly validated.
+### STRICT BOUNDARIES:
+- ONLY test functionality explicitly mentioned in the user story
+- DO NOT add tests for features not described in requirements
+- Stay within the defined scope and acceptance criteria
+- If acceptance criteria are provided, ensure ALL test cases map to them
 """
         
         return prompt
@@ -159,6 +274,28 @@ Remember: Generate comprehensive test cases that ensure the user story is thorou
         
         return user_types or ['user']
     
+    @staticmethod
+    def _build_scope_constraints(story_requirements: Dict) -> str:
+        """Build scope constraint section"""
+        constraints_text = "## SCOPE CONSTRAINTS:\n\n"
+
+        if story_requirements['user_actions']:
+            constraints_text += "### User Actions to Test:\n"
+            for action in story_requirements['user_actions']:
+                constraints_text += f"- {action}\n"
+
+        if story_requirements['constraints']:
+            constraints_text += "\n### Business Constraints:\n"
+            for constraint in story_requirements['constraints']:
+                constraints_text += f"- {constraint}\n"
+
+        if story_requirements['acceptance_criteria']:
+            constraints_text += "\n### Acceptance Criteria:\n"
+            for criteria in story_requirements['acceptance_criteria']:
+                constraints_text += f"- {criteria}\n"
+
+        return constraints_text
+
     @staticmethod
     def _extract_actions(story_lower: str) -> List[str]:
         """Extract key actions from the story"""
