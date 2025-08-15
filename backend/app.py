@@ -1,6 +1,7 @@
 # app.py
 import os
 import tempfile
+from typing import List, Dict
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import requests
@@ -173,6 +174,34 @@ def call_groq(prompt: str):
     r.raise_for_status()
     return r.json()
 
+def validate_and_filter_test_cases(test_cases: List[Dict], user_story: str) -> List[Dict]:
+    """
+    Validate test cases against story requirements and filter out-of-scope ones
+    """
+    try:
+        from prompt_engineering import AdvancedPromptEngineer
+
+        # Extract requirements from story
+        story_requirements = AdvancedPromptEngineer.extract_requirements_from_story(user_story)
+
+        validated_cases = []
+        for test_case in test_cases:
+            validation_result = AdvancedPromptEngineer.validate_test_case_scope(
+                test_case, story_requirements
+            )
+
+            if validation_result['is_valid']:
+                test_case['validation_score'] = validation_result['score']
+                validated_cases.append(test_case)
+            else:
+                print(f"⚠️ Filtered out-of-scope test case: {test_case.get('title', 'Unknown')}")
+                print(f"   Issues: {', '.join(validation_result['issues'])}")
+
+        return validated_cases
+    except Exception as e:
+        print(f"⚠️ Validation failed, returning original test cases: {e}")
+        return test_cases
+
 # --------- Parser: convert LLM text into list of dicts ----------
 def parse_testcases_from_text(content: str):
     """
@@ -217,6 +246,8 @@ def parse_testcases_from_text(content: str):
                     current_field = "expected"
                 elif "actual result" in lower_line or "actual" in lower_line:
                     current_field = "actual"
+                elif "requirement mapping" in lower_line or "mapping" in lower_line:
+                    current_field = "requirement_mapping"
                 elif "priority" in lower_line:
                     current_field = "priority"
                 elif "status" in lower_line:
@@ -251,6 +282,7 @@ def parse_testcases_from_text(content: str):
             "expected": tc.get("expected", ""),
             "actual": tc.get("actual", ""),
             "priority": tc.get("priority", ""),
+            "requirement_mapping": tc.get("requirement_mapping", ""),
             "status": tc.get("status", "Pending")
         })
 
@@ -351,15 +383,25 @@ def generate_test_cases():
     except Exception as e:
         print(f"\u26a0\ufe0f Advanced prompting not available: {e}")
         # Basic prompt fallback
-        prompt = f"""Generate comprehensive test cases for the following user story:
+        prompt = f"""Generate comprehensive test cases for the following user story.
+
+IMPORTANT: Only test features and functionality explicitly mentioned in the user story below. 
+Do not create test cases for features not described in the requirements.
 
 User Story: {full_story}
 
-Please generate 3-5 detailed test cases with the following format for each:
+SCOPE CONSTRAINTS:
+- Test ONLY what is mentioned in the user story above
+- Do not test admin features, integrations, or external systems unless explicitly mentioned
+- Stay within the boundaries of the described functionality
+- Each test case must map back to specific requirements in the story
+
+Generate 3-5 detailed test cases with the following format for each:
 
 Test Case ID: TC_XXX
 Title: [Clear test case title]
 Preconditions: [What needs to be set up before testing]
+Requirement Mapping: [Which part of the user story this test validates]
 Test Steps: 
 1. [Step 1]
 2. [Step 2]
@@ -367,7 +409,8 @@ Test Steps:
 Expected Result: [What should happen]
 Priority: [High/Medium/Low]
 
-Make sure test cases cover positive scenarios, negative scenarios, and edge cases."""
+Make sure test cases cover positive scenarios, negative scenarios, and edge cases.
+Remember: ONLY test what is explicitly described in the user story requirements."""
     print("\n===== FINAL PROMPT SENT TO GROQ =====\n")
     print(prompt)
     print("\n=====================================\n")
@@ -396,6 +439,10 @@ Make sure test cases cover positive scenarios, negative scenarios, and edge case
 
     # Parse into structured test cases
     test_cases = parse_testcases_from_text(llm_content)
+
+    # Validate and filter test cases to ensure they stay within requirements
+    print(f"📋 Generated {len(test_cases)} test cases, validating scope...")
+    test_cases = validate_and_filter_test_cases(test_cases, full_story)
 
     # If parser returned empty, include a fallback single testcase with raw LLM text so frontend sees something
     if not test_cases:
@@ -431,7 +478,8 @@ Make sure test cases cover positive scenarios, negative scenarios, and edge case
             "generation_timestamp": story_context.get('timestamp'),
             "model_used": "openai/gpt-oss-120b",
             "pdf_processing": PDF_PROCESSING_MODE,
-            "rag_available": hasattr(rag_helper, 'retrieve_similar_with_context') and callable(getattr(rag_helper, 'retrieve_similar_with_context', None))
+            "rag_available": hasattr(rag_helper, 'retrieve_similar_with_context') and callable(getattr(rag_helper, 'retrieve_similar_with_context', None)),
+            "scope_validated": True
         }
     }
     
@@ -766,6 +814,47 @@ def analyze_pdf():
                 
     except Exception as e:
         print(f"PDF analysis error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v1/analyze-requirements', methods=['POST'])
+def analyze_requirements():
+    """
+    📊 Analyze requirement coverage for generated test cases
+    """
+    try:
+        data = request.get_json()
+        user_story = data.get('user_story', '')
+        test_cases = data.get('test_cases', [])
+
+        if not user_story or not test_cases:
+            return jsonify({"error": "Missing user_story or test_cases"}), 400
+
+        # Import requirement analyzer
+        from requirement_analyzer import RequirementAnalyzer
+
+        # Extract requirements
+        requirements = RequirementAnalyzer.extract_testable_requirements(user_story)
+
+        # Analyze coverage
+        coverage_analysis = RequirementAnalyzer.analyze_test_coverage(test_cases, user_story)
+
+        # Generate report
+        coverage_report = RequirementAnalyzer.generate_coverage_report(test_cases, user_story)
+
+        return jsonify({
+            "status": "success",
+            "requirements": requirements,
+            "coverage_analysis": coverage_analysis,
+            "coverage_report": coverage_report,
+            "recommendations": [
+                "Focus on uncovered requirements" if coverage_analysis['coverage_percentage'] < 80 else "Good coverage achieved",
+                "Review scope violations" if any(tc['scope_issues'] for tc in coverage_analysis['test_case_analysis']) else "All tests within scope"
+            ]
+        })
+
+    except Exception as e:
+        print(f"Requirement analysis error: {e}")
         return jsonify({"error": str(e)}), 500
 
 
