@@ -1,7 +1,7 @@
 # AI Test Case Generator Project
 
 ## Overview
-This project automates the generation, management, and improvement of software test cases using advanced AI, PDF, and image processing. It features an interactive web frontend and a Python/Flask backend supporting LLMs, RAG, OCR, and more.
+This project automates the generation, management, and improvement of software test cases using advanced AI, PDF, image processing, and **Figma design integration**. It features an interactive web frontend and a Python/Flask backend supporting LLMs, RAG, OCR, and design-driven test case generation.
 
 ---
 
@@ -22,6 +22,7 @@ This project automates the generation, management, and improvement of software t
    ```
 2. Set up environment variables (see backend/.env.example):
    - `GROQ_API_KEY` is **required**
+   - `FIGMA_ACCESS_TOKEN` for Figma integration (optional but recommended)
    - If using OpenAI: set `OPENAI_API_KEY` too
 3. Run the Flask server:
    ```bash
@@ -31,6 +32,7 @@ This project automates the generation, management, and improvement of software t
 4. Optional features:
    - For advanced PDF: `pip install PyMuPDF`
    - For image/OCR: `pip install pytesseract Pillow`
+   - For **Figma integration**: Get your personal access token from [Figma Settings > Personal Access Tokens](https://www.figma.com/settings)
 
 ---
 
@@ -51,11 +53,45 @@ This project automates the generation, management, and improvement of software t
 
 ## Main Features
 - **Automated test case generation**: AI-based, supports user stories + PDF/image attachments
+- **Figma integration**: Extract UI components and design patterns from Figma files for comprehensive testing
 - **RAG system**: Retrieval-augmented generation for smarter text case synthesis (ChromaDB-powered)
-- **Prompt engineering**: Modular advanced prompting
+- **Prompt engineering**: Modular advanced prompting with design-aware context
 - **LLM flexibility**: Works with Groq and OpenAI APIs
 - **PDF/image parsing**: Extracts text from complex docs/screenshots
+- **Requirement analysis**: Advanced requirement extraction and coverage analysis
 - **Feedback/learning**: User feedback improves future test cases
+
+---
+
+## Figma Integration Setup
+
+### Getting Your Figma Access Token
+1. Go to Figma Settings → Account → Personal Access Tokens
+2. Click "Create new token"
+3. Name your token (e.g., "TestCase Generator")
+4. Copy the generated token
+5. Add it to your `.env` file: `FIGMA_ACCESS_TOKEN=your_token_here`
+
+### Supported Figma URL Formats
+- `https://www.figma.com/file/[file-key]/[file-name]`
+- `https://www.figma.com/design/[file-key]/[file-name]`
+- URLs with specific node selection: `#[node-id]`
+
+### What Gets Extracted
+- **UI Components**: Buttons, inputs, dropdowns, modals, etc.
+- **Design Patterns**: Card layouts, forms, navigation patterns
+- **User Flows**: Multi-step interactions and component relationships
+- **Test Scenarios**: Suggested test cases based on component interactions
+
+---
+
+## API Endpoints
+
+### Core Endpoints
+- `POST /api/v1/generate-test-cases` - Generate test cases (supports Figma URLs)
+- `POST /api/v1/validate-figma` - Validate and preview Figma designs
+- `POST /api/v1/figma-components` - Get detailed component analysis
+- `POST /api/v1/analyze-requirements` - Analyze requirement coverage
 
 ---
 
@@ -70,3 +106,4 @@ MIT License (see LICENSE file)
 ---
 
 *For any advanced PDF issues, ensure you install PyMuPDF as instructed above!*
+*For Figma integration, ensure you have a valid personal access token configured!*

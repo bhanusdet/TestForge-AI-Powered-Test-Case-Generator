@@ -8,6 +8,7 @@ import requests
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from datetime import datetime
+import re
 
 # Smart import with graceful fallbacks
 def setup_rag_system():
@@ -38,11 +39,27 @@ def setup_image_processing():
         from image_helper import get_text_from_image
         print("✅ Image processing loaded")
         return get_text_from_image
-    except Exception as e:
-        print(f"⚠️ Image processing not available: {e}")
-        def fallback_image_processor(filepath):
-            return "Image processing not available. Please install required dependencies."
-        return fallback_image_processor
+    except ImportError as e:
+        print(f"⚠️ Enhanced image processing not available: {e}")
+        
+        # Fallback to basic OCR-only processing
+        try:
+            from PIL import Image
+            import pytesseract
+            
+            def basic_image_processor(filepath):
+                try:
+                    return pytesseract.image_to_string(Image.open(filepath))
+                except Exception as e:
+                    return f"Basic image processing failed: {str(e)}"
+            
+            print("✅ Basic image processing loaded as fallback")
+            return basic_image_processor
+            
+        except ImportError:
+            def fallback_image_processor(filepath):
+                return "Image processing not available. Please install required dependencies."
+            return fallback_image_processor
 
 # Initialize systems
 rag_helper = setup_rag_system()
@@ -64,6 +81,24 @@ def lazy_import_pandas():
 def lazy_import_sklearn():
     import importlib
     return importlib.import_module('sklearn')
+
+def setup_figma_integration():
+    """Setup Figma integration with graceful fallback"""
+    try:
+        from figma_integration import FigmaIntegration
+        figma_token = os.getenv('FIGMA_ACCESS_TOKEN')
+        if figma_token:
+            print("✅ Figma integration enabled")
+            return FigmaIntegration(figma_token)
+        else:
+            print("⚠️ Figma integration disabled: No access token provided")
+            return None
+    except Exception as e:
+        print(f"⚠️ Figma integration not available: {e}")
+        return None
+
+# Initialize Figma integration
+figma_integration = setup_figma_integration()
 # Smart PDF processing with graceful fallbacks
 def setup_pdf_processing():
     """Setup PDF processing with graceful fallbacks"""
@@ -134,6 +169,7 @@ def setup_pdf_processing():
 PDF_PROCESSING_MODE = setup_pdf_processing()
 # Removed eager import of AdvancedPromptEngineer; now lazily imported in handlers for performance
 
+# Load environment variables - ensure this happens early
 load_dotenv()
 
 app = Flask(__name__)
@@ -158,6 +194,56 @@ def build_enhanced_story_context(user_story: str) -> dict:
         'word_count': len(user_story.split())
     }
 
+def compress_prompt_for_payload_limit(prompt: str, max_chars: int = 8000) -> str:
+    """
+    Compress prompt to fit within API payload limits
+    """
+    if len(prompt) <= max_chars:
+        return prompt
+    
+    print(f"⚠️ Prompt too long ({len(prompt)} chars), compressing to {max_chars} chars")
+    
+    # Strategy: Keep the most important parts
+    lines = prompt.split('\n')
+    
+    # Always keep the instruction header
+    header_lines = []
+    content_lines = []
+    footer_lines = []
+    
+    in_header = True
+    in_footer = False
+    
+    for line in lines:
+        if in_header and ('User Story:' in line or 'SCOPE CONSTRAINTS:' in line):
+            in_header = False
+        elif 'Generate' in line and 'test case' in line.lower():
+            in_footer = True
+        
+        if in_header:
+            header_lines.append(line)
+        elif in_footer:
+            footer_lines.append(line)
+        else:
+            content_lines.append(line)
+    
+    # Reconstruct with compression
+    compressed_prompt = '\n'.join(header_lines)
+    
+    # Add compressed content
+    remaining_chars = max_chars - len(compressed_prompt) - len('\n'.join(footer_lines)) - 100
+    
+    if remaining_chars > 500:
+        content_text = '\n'.join(content_lines)
+        if len(content_text) > remaining_chars:
+            content_text = content_text[:remaining_chars - 50] + '\n...[Content truncated for size limits]'
+        compressed_prompt += '\n' + content_text
+    
+    compressed_prompt += '\n' + '\n'.join(footer_lines)
+    
+    print(f"✅ Compressed prompt from {len(prompt)} to {len(compressed_prompt)} chars")
+    return compressed_prompt
+
 def call_groq(prompt: str):
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
@@ -170,9 +256,25 @@ def call_groq(prompt: str):
         ],
         "temperature": 0.0
     }
-    r = requests.post(GROQ_URL, headers=headers, json=body, timeout=60)
-    r.raise_for_status()
-    return r.json()
+    
+    try:
+        r = requests.post(GROQ_URL, headers=headers, json=body, timeout=60)
+        r.raise_for_status()
+        return r.json()
+    except requests.exceptions.HTTPError as e:
+        if r.status_code == 413:  # Payload Too Large
+            print(f"❌ Payload too large error (413). Prompt size: {len(prompt)} chars")
+            # Try with a more aggressive compression
+            compressed_prompt = compress_prompt_for_payload_limit(prompt, max_chars=4000)
+            print(f"🔄 Retrying with more compressed prompt: {len(compressed_prompt)} chars")
+            
+            # Retry with compressed prompt
+            body["messages"][0]["content"] = compressed_prompt
+            retry_response = requests.post(GROQ_URL, headers=headers, json=body, timeout=60)
+            retry_response.raise_for_status()
+            return retry_response.json()
+        else:
+            raise e
 
 def validate_and_filter_test_cases(test_cases: List[Dict], user_story: str) -> List[Dict]:
     """
@@ -294,17 +396,20 @@ def parse_testcases_from_text(content: str):
 def generate_test_cases():
     """
     Accepts:
-      - multipart/form-data with 'story' (form field) and multiple 'attachments' (files)
-      - OR JSON { "story": "..." }
+      - multipart/form-data with 'story' (form field), multiple 'attachments' (files), and optional 'figma_url'
+      - OR JSON { "story": "...", "figma_url": "..." }
     Returns:
       - JSON array (list) of test case objects
     """
     extracted_texts = []
     user_story = ""
+    figma_url = ""
+    figma_context = None
 
     # multipart
     if request.content_type and request.content_type.startswith('multipart/form-data'):
         user_story = request.form.get('story', '') or ""
+        figma_url = request.form.get('figma_url', '') or ""
         files = request.files.getlist('attachments')
         for f in files:
             if not f or not f.filename:
@@ -319,29 +424,39 @@ def generate_test_cases():
 
             try:
                 if ext in ['png', 'jpg', 'jpeg', 'bmp', 'tiff', 'webp']:
-                    text = get_text_from_image(tmp_path)  # your helper
-                elif ext == 'pdf':
-                    # Use enhanced PDF processing
-                    text = get_text_from_pdf(tmp_path)
-                    
-                    # Log PDF processing results for monitoring
+                    # Try enhanced image analysis first
                     try:
-                        detailed_result = get_detailed_pdf_content(tmp_path)
-                        quality_score = detailed_result.get('quality_score', 0.0)
-                        methods_used = detailed_result.get('extraction_method', [])
-                        tables_count = len(detailed_result.get('tables', []))
-                        images_count = len(detailed_result.get('images_text', []))
+                        from image_helper import get_detailed_image_analysis, create_image_test_context
                         
-                        print(f"📄 PDF processed: Quality={quality_score:.2f}, "
-                              f"Methods={methods_used}, Tables={tables_count}, "
-                              f"Images={images_count}, Size={len(text)} chars")
-                    except Exception as log_error:
-                        print(f"⚠️ PDF processing logging failed: {log_error}")
+                        image_analysis = get_detailed_image_analysis(tmp_path)
+                        
+                        if image_analysis.get('analysis_quality', 0) > 0:
+                            # Use enhanced context
+                            image_context = create_image_test_context(image_analysis, max_length=800)
+                            extracted_texts.append(image_context)
+                            print(f"🖼️ Enhanced image analysis: Quality={image_analysis.get('analysis_quality', 0):.2f}, "
+                                  f"UI Elements={len(image_analysis.get('ui_elements', []))}")
+                        else:
+                            # Fallback to basic text extraction
+                            text = get_text_from_image(tmp_path)
+                            if text:
+                                extracted_texts.append(f"## IMAGE TEXT CONTENT\n\n{text}")
+                                print(f"🖼️ Basic image processing: {len(text)} characters extracted")
+                    
+                    except ImportError:
+                        # Enhanced features not available, use basic processing
+                        text = get_text_from_image(tmp_path)
+                        if text:
+                            extracted_texts.append(f"## IMAGE TEXT CONTENT\n\n{text}")
+                            print(f"🖼️ Basic image processing: {len(text)} characters extracted")
+                
+                elif ext == 'pdf':
+                    text = get_text_from_pdf(tmp_path)
+                    if text:
+                        extracted_texts.append(text)
+                        print(f"📄 PDF processed: {len(text)} characters extracted")
                 else:
                     text = None
-
-                if text:
-                    extracted_texts.append(text)
             finally:
                 try:
                     os.remove(tmp_path)
@@ -352,15 +467,90 @@ def generate_test_cases():
     elif request.is_json:
         data = request.get_json()
         user_story = data.get('story', '') or ""
+        figma_url = data.get('figma_url', '') or ""
         extracted_texts = []
     else:
         return jsonify({"error": "Unsupported Content-Type"}), 415
+
+    # Process Figma URL if provided
+    if figma_url and figma_integration:
+        print(f"🎨 Processing Figma design: {figma_url}")
+        
+        # First validate the Figma URL format
+        is_valid, file_key, node_id = figma_integration.validate_figma_url(figma_url)
+        if not is_valid:
+            print("❌ Invalid Figma URL format")
+            extracted_texts.append("## FIGMA INTEGRATION\n\n⚠️ Invalid Figma URL format provided. Please check the URL and try again.")
+        else:
+            # Validate file access
+            is_accessible, access_message = figma_integration.validate_figma_file_access(file_key)
+            if not is_accessible:
+                print(f"❌ Figma file access error: {access_message}")
+                extracted_texts.append(f"## FIGMA INTEGRATION\n\n⚠️ Cannot access Figma file: {access_message}")
+            else:
+                try:
+                    # Try enhanced context first, fallback to basic
+                    figma_context = figma_integration.get_enhanced_design_context_with_images(figma_url)
+                    
+                    if 'error' not in figma_context:
+                        # Check if enhanced processing was successful
+                        image_analysis = figma_context.get('image_analysis', {})
+                        
+                        if image_analysis.get('enhanced_available'):
+                            print(f"✅ Enhanced Figma processing: {image_analysis.get('visual_elements_count', 0)} visual elements")
+                            
+                            # Use enhanced context if available
+                            if 'image_enhanced_context' in figma_context:
+                                extracted_texts.append(figma_context['image_enhanced_context'])
+                                print("📦 Using enhanced image-based Figma context")
+                            else:
+                                # Fallback to standard context
+                                figma_prompt_context = figma_integration.generate_figma_enhanced_prompt_context(figma_context, max_length=1000)
+                                extracted_texts.append(figma_prompt_context)
+                        else:
+                            print(f"⚠️ Using basic Figma processing: {image_analysis.get('message', 'Enhanced features not available')}")
+                            if image_analysis.get('guidance'):
+                                print(f"💡 Guidance: {image_analysis.get('guidance')}")
+                            
+                            # Use standard context compression
+                            current_content_size = len(user_story) + sum(len(text) for text in extracted_texts)
+                            
+                            if current_content_size > 5000:
+                                figma_prompt_context = figma_integration.generate_figma_micro_context(figma_context)
+                                print("📦 Using micro-compressed Figma context")
+                            elif current_content_size > 2000:
+                                figma_prompt_context = figma_integration.generate_figma_summary_context(figma_context)
+                                print("📦 Using compressed Figma context")
+                            else:
+                                figma_prompt_context = figma_integration.generate_figma_enhanced_prompt_context(figma_context, max_length=1000)
+                                print("📦 Using standard Figma context")
+                            
+                            extracted_texts.append(figma_prompt_context)
+                        
+                        print(f"✅ Figma context extracted: {len(figma_context.get('ui_components', []))} UI components found")
+                    else:
+                        print(f"❌ Figma processing error: {figma_context['error']}")
+                        extracted_texts.append(f"## FIGMA INTEGRATION\n\n⚠️ Error processing Figma design: {figma_context['error']}")
+                        
+                except Exception as e:
+                    print(f"❌ Figma integration error: {e}")
+                    extracted_texts.append(f"## FIGMA INTEGRATION\n\n⚠️ Error processing Figma design: {str(e)}")
+                    
+    elif figma_url and not figma_integration:
+        print("⚠️ Figma URL provided but integration not available")
+        extracted_texts.append("## FIGMA INTEGRATION\n\n⚠️ Figma integration not available. Please set FIGMA_ACCESS_TOKEN environment variable.")
 
     if not user_story and not extracted_texts:
         return jsonify({"error": "Missing user story or attachments"}), 400
 
     # Merge story + attachments
     full_story = "\n\n".join(filter(None, [user_story.strip()] + extracted_texts)).strip()
+    
+    # Safety check: truncate extremely large stories to prevent payload issues
+    MAX_STORY_LENGTH = 6000
+    if len(full_story) > MAX_STORY_LENGTH:
+        print(f"⚠️ Story too long ({len(full_story)} chars), truncating to {MAX_STORY_LENGTH} chars")
+        full_story = full_story[:MAX_STORY_LENGTH] + "\n\n[Content truncated due to size limits]"
 
     # Enhanced RAG retrieval with learning capabilities (if available)
     try:
@@ -376,19 +566,22 @@ def generate_test_cases():
     try:
         # Lazy import for cold start optimization
         from prompt_engineering import AdvancedPromptEngineer
+        # Limit similar test cases to prevent payload bloat
+        limited_similar_cases = similar_test_cases[:3] if similar_test_cases else []
         prompt = AdvancedPromptEngineer.build_enhanced_prompt(
-            full_story, similar_test_cases, story_context
+            full_story, limited_similar_cases, story_context
         )
-        print("\u2705 Using enhanced prompt engineering")
+        print("✅ Using enhanced prompt engineering")
     except Exception as e:
-        print(f"\u26a0\ufe0f Advanced prompting not available: {e}")
-        # Basic prompt fallback
+        print(f"⚠️ Advanced prompting not available: {e}")
+        # Basic prompt fallback with compression
+        story_preview = full_story[:2000] + "..." if len(full_story) > 2000 else full_story
         prompt = f"""Generate comprehensive test cases for the following user story.
 
 IMPORTANT: Only test features and functionality explicitly mentioned in the user story below. 
 Do not create test cases for features not described in the requirements.
 
-User Story: {full_story}
+User Story: {story_preview}
 
 SCOPE CONSTRAINTS:
 - Test ONLY what is mentioned in the user story above
@@ -411,8 +604,24 @@ Priority: [High/Medium/Low]
 
 Make sure test cases cover positive scenarios, negative scenarios, and edge cases.
 Remember: ONLY test what is explicitly described in the user story requirements."""
+
+    # Compress prompt to avoid payload limits
+    prompt = compress_prompt_for_payload_limit(prompt, max_chars=7000)
+    
+    # Debug information
+    prompt_size = len(prompt)
+    story_size = len(full_story)
+    print(f"\n📊 PROMPT SIZE ANALYSIS:")
+    print(f"   Story size: {story_size} chars")
+    print(f"   Final prompt size: {prompt_size} chars")
+    print(f"   Figma URL provided: {'Yes' if figma_url else 'No'}")
+    print(f"   Similar test cases: {len(similar_test_cases) if similar_test_cases else 0}")
+    
+    if prompt_size > 8000:
+        print(f"⚠️ WARNING: Prompt is {prompt_size} chars - may cause payload issues")
+    
     print("\n===== FINAL PROMPT SENT TO GROQ =====\n")
-    print(prompt)
+    print(prompt[:1000] + "..." if len(prompt) > 1000 else prompt)  # Only show first 1000 chars in logs
     print("\n=====================================\n")
     try:
         resp_json = call_groq(prompt)
@@ -478,8 +687,7 @@ Remember: ONLY test what is explicitly described in the user story requirements.
             "generation_timestamp": story_context.get('timestamp'),
             "model_used": "openai/gpt-oss-120b",
             "pdf_processing": PDF_PROCESSING_MODE,
-            "rag_available": hasattr(rag_helper, 'retrieve_similar_with_context') and callable(getattr(rag_helper, 'retrieve_similar_with_context', None)),
-            "scope_validated": True
+            "rag_available": hasattr(rag_helper, 'retrieve_similar_with_context') and callable(getattr(rag_helper, 'retrieve_similar_with_context', None))
         }
     }
     
@@ -817,46 +1025,22 @@ def analyze_pdf():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route('/api/v1/analyze-requirements', methods=['POST'])
-def analyze_requirements():
-    """
-    📊 Analyze requirement coverage for generated test cases
-    """
-    try:
-        data = request.get_json()
-        user_story = data.get('user_story', '')
-        test_cases = data.get('test_cases', [])
-
-        if not user_story or not test_cases:
-            return jsonify({"error": "Missing user_story or test_cases"}), 400
-
-        # Import requirement analyzer
-        from requirement_analyzer import RequirementAnalyzer
-
-        # Extract requirements
-        requirements = RequirementAnalyzer.extract_testable_requirements(user_story)
-
-        # Analyze coverage
-        coverage_analysis = RequirementAnalyzer.analyze_test_coverage(test_cases, user_story)
-
-        # Generate report
-        coverage_report = RequirementAnalyzer.generate_coverage_report(test_cases, user_story)
-
-        return jsonify({
-            "status": "success",
-            "requirements": requirements,
-            "coverage_analysis": coverage_analysis,
-            "coverage_report": coverage_report,
-            "recommendations": [
-                "Focus on uncovered requirements" if coverage_analysis['coverage_percentage'] < 80 else "Good coverage achieved",
-                "Review scope violations" if any(tc['scope_issues'] for tc in coverage_analysis['test_case_analysis']) else "All tests within scope"
-            ]
-        })
-
-    except Exception as e:
-        print(f"Requirement analysis error: {e}")
-        return jsonify({"error": str(e)}), 500
-
-
 if __name__ == '__main__':
-    app.run(debug=True, port=8000)
+    # Try port 8000 first, fallback to 8001 if occupied
+    import socket
+    
+    def is_port_available(port):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(('localhost', port))
+                return True
+        except OSError:
+            return False
+    
+    port = 8000
+    if not is_port_available(port):
+        port = 8001
+        print(f"⚠️ Port 8000 in use, using port {port} instead")
+    
+    print(f"🚀 Starting AI Test Case Generator on http://localhost:{port}")
+    app.run(debug=True, port=port, host='0.0.0.0')

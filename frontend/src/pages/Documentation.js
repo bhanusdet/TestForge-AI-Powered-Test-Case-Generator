@@ -9,7 +9,8 @@ import {
   FileText,
   Star,
   ArrowRight,
-  Copy
+  Copy,
+  Figma
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -67,6 +68,48 @@ const Documentation = () => {
       )
     },
     {
+      icon: Figma,
+      title: 'Figma Integration',
+      content: (
+        <div className="space-y-4">
+          <p className="text-gray-600">Generate design-focused test cases from your Figma prototypes:</p>
+          <div className="bg-purple-50 rounded-lg p-4">
+            <h4 className="font-semibold text-purple-900 mb-2">Features:</h4>
+            <ul className="text-purple-800 text-sm space-y-1">
+              <li>• Extracts UI components (buttons, inputs, dropdowns)</li>
+              <li>• Identifies user interaction flows</li>
+              <li>• Generates component-specific test scenarios</li>
+              <li>• Supports file, design, and prototype URLs</li>
+            </ul>
+          </div>
+          <div className="bg-gray-900 rounded-lg p-4 text-green-400 font-mono text-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span># With Figma URL</span>
+              <button 
+                onClick={() => copyToClipboard(`{
+  "story": "As a user, I want to login...",
+  "figma_url": "https://www.figma.com/design/ABC123/Login-Page"
+}`)}
+                className="text-gray-400 hover:text-white"
+              >
+                <Copy className="w-4 h-4" />
+              </button>
+            </div>
+            <div>{`{`}</div>
+            <div>  "story": "As a user, I want to login...",</div>
+            <div>  "figma_url": "https://www.figma.com/design/ABC123/Login-Page"</div>
+            <div>{`}`}</div>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-3">
+            <p className="text-sm text-gray-600 mb-2">
+              <strong>Setup:</strong> Add your Figma Personal Access Token to <code className="bg-gray-200 px-1 rounded">backend/.env</code>
+            </p>
+            <code className="text-xs text-gray-700">FIGMA_ACCESS_TOKEN=your_figma_token_here</code>
+          </div>
+        </div>
+      )
+    },
+    {
       icon: Brain,
       title: 'Learning System',
       content: (
@@ -92,6 +135,7 @@ const Documentation = () => {
           <p className="text-gray-600">Configure your environment variables:</p>
           <div className="bg-gray-900 rounded-lg p-4 text-green-400 font-mono text-sm">
             <div>GROQ_API_KEY=your_groq_api_key_here</div>
+            <div>FIGMA_ACCESS_TOKEN=your_figma_token_here</div>
             <div>RAG_TOP_K=5</div>
             <div>EMBEDDING_MODEL=all-mpnet-base-v2</div>
             <div>LEARNING_ENABLED=true</div>
