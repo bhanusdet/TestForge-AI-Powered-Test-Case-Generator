@@ -1,3 +1,9 @@
+import warnings
+# Suppress PDF processing warnings
+warnings.filterwarnings('ignore', category=UserWarning, module='pdfminer')
+warnings.filterwarnings('ignore', message='.*FontBBox.*')
+warnings.filterwarnings('ignore', message='.*DataFrame columns are not unique.*')
+
 import pdfplumber
 import pandas as pd
 import logging
@@ -5,6 +11,9 @@ import tempfile
 import os
 from typing import Dict, List, Optional, Union
 import re
+
+# Suppress pandas warnings
+pd.options.mode.chained_assignment = None
 
 # Optional dependencies - gracefully handle if not available
 try:

@@ -12,11 +12,17 @@ import {
   Star,
   Sparkles,
   X,
-  Brain
+  Brain,
+  Figma,
+  Link,
+  ExternalLink,
+  HelpCircle
 } from 'lucide-react';
+import FigmaUrlHelper from './FigmaUrlHelper';
 
 export default function TestCaseGenerator() {
   const [userStory, setUserStory] = useState('');
+  const [figmaUrl, setFigmaUrl] = useState('');
   const [attachments, setAttachments] = useState([]);
   const [testCases, setTestCases] = useState([]);
   const [metadata, setMetadata] = useState(null);
@@ -27,6 +33,8 @@ export default function TestCaseGenerator() {
   const [feedbackCategories, setFeedbackCategories] = useState([]);
   const [missingScenarios, setMissingScenarios] = useState('');
   const [improvedTestCases, setImprovedTestCases] = useState([]);
+  const [figmaUrlError, setFigmaUrlError] = useState('');
+  const [showFigmaHelper, setShowFigmaHelper] = useState(false);
 
   const API_BASE = process.env.NODE_ENV === 'production' 
     ? '/api/v1' 
@@ -41,9 +49,44 @@ export default function TestCaseGenerator() {
     setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
+  const validateFigmaUrl = (url) => {
+    if (!url.trim()) {
+      setFigmaUrlError('');
+      return true;
+    }
+
+    const figmaPatterns = [
+      /^https:\/\/www\.figma\.com\/file\/[a-zA-Z0-9\-_]+\/[^?]*(\?[^#]*)?(#.*)?$/,
+      /^https:\/\/www\.figma\.com\/design\/[a-zA-Z0-9\-_]+\/[^?]*(\?[^#]*)?(#.*)?$/,
+      /^figma:\/\/file\/[a-zA-Z0-9\-_]+(#.*)?$/
+    ];
+
+    const isValid = figmaPatterns.some(pattern => pattern.test(url));
+    
+    if (!isValid) {
+      setFigmaUrlError('Please enter a valid Figma URL (file or design link)');
+      return false;
+    }
+    
+    setFigmaUrlError('');
+    return true;
+  };
+
+  const handleFigmaUrlChange = (e) => {
+    const url = e.target.value;
+    setFigmaUrl(url);
+    validateFigmaUrl(url);
+  };
+
   const handleGenerate = async () => {
-    if (!userStory.trim() && attachments.length === 0) {
-      toast.error("❌ Please enter a story or upload files");
+    if (!userStory.trim() && attachments.length === 0 && !figmaUrl.trim()) {
+      toast.error("❌ Please enter a story, upload files, or provide a Figma URL");
+      return;
+    }
+
+    // Validate Figma URL if provided
+    if (figmaUrl.trim() && !validateFigmaUrl(figmaUrl)) {
+      toast.error("❌ Please provide a valid Figma URL");
       return;
     }
 
@@ -51,6 +94,11 @@ export default function TestCaseGenerator() {
     try {
       const formData = new FormData();
       formData.append('story', userStory);
+
+      // Add Figma URL if provided
+      if (figmaUrl.trim()) {
+        formData.append('figma_url', figmaUrl);
+      }
 
       // Add all uploaded files (PDFs + images)
       attachments.forEach(file => {
@@ -235,7 +283,7 @@ export default function TestCaseGenerator() {
           AI Test Case Generator
         </h1>
         <p className="text-lg text-gray-600">
-          Transform your user stories into comprehensive test cases
+          Transform your user stories and Figma designs into comprehensive test cases
         </p>
       </motion.div>
 
@@ -252,12 +300,98 @@ export default function TestCaseGenerator() {
               User Story
             </label>
             <textarea
-              rows="8"
+              rows="6"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               value={userStory}
               onChange={(e) => setUserStory(e.target.value)}
               placeholder="Enter your user story here..."
             />
+          </div>
+
+          {/* Figma URL Input */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="flex items-center space-x-2">
+                <Figma className="w-4 h-4 text-purple-600" />
+                <span>Figma Design URL (Optional)</span>
+              </div>
+            </label>
+            <div className="space-y-3">
+              <div className="relative">
+                <input
+                  type="url"
+                  className={`w-full px-4 py-3 pl-10 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    figmaUrlError ? 'border-red-300' : 'border-gray-300'
+                  }`}
+                  value={figmaUrl}
+                  onChange={handleFigmaUrlChange}
+                  placeholder="https://www.figma.com/design/your-design-file..."
+                />
+                <Link className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
+                  <button
+                    onClick={() => setShowFigmaHelper(!showFigmaHelper)}
+                    className="text-gray-400 hover:text-gray-600"
+                    title="Show Figma URL helper"
+                  >
+                    <HelpCircle className="w-4 h-4" />
+                  </button>
+                  {figmaUrl && !figmaUrlError && (
+                    <a
+                      href={figmaUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-500 hover:text-blue-700"
+                      title="Open Figma design"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {showFigmaHelper && (
+                <FigmaUrlHelper onUrlSelect={(url) => {
+                  setFigmaUrl(url);
+                  validateFigmaUrl(url);
+                  setShowFigmaHelper(false);
+                }} />
+              )}
+            </div>
+            {figmaUrlError && (
+              <p className="mt-1 text-sm text-red-600">{figmaUrlError}</p>
+            )}
+            <div className="mt-2 text-xs text-gray-500 space-y-1">
+              <p>Enhance test cases with UI components from your Figma design.</p>
+              <details className="cursor-pointer">
+                <summary className="text-blue-600 hover:text-blue-800">
+                  View supported URL formats & setup
+                </summary>
+                <div className="mt-1 pl-2 border-l-2 border-gray-200 space-y-2">
+                  <div>
+                    <p className="font-medium text-gray-600">Supported URLs:</p>
+                    <p>• https://www.figma.com/file/ABC123/Your-Design</p>
+                    <p>• https://www.figma.com/design/ABC123/Your-Design</p>
+                    <p>• https://www.figma.com/design/ABC123/Design?node-id=123-456</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-600">First time setup:</p>
+                    <p>• Get your Personal Access Token from 
+                      <a 
+                        href="https://www.figma.com/settings" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-purple-600 hover:text-purple-800 ml-1"
+                      >
+                        Figma Settings
+                        <ExternalLink className="w-3 h-3 inline ml-1" />
+                      </a>
+                    </p>
+                    <p>• Add it to your backend/.env file as FIGMA_ACCESS_TOKEN</p>
+                  </div>
+                </div>
+              </details>
+            </div>
           </div>
 
           {/* File Upload */}
@@ -301,16 +435,47 @@ export default function TestCaseGenerator() {
             )}
           </div>
 
+          {/* Status Indicators */}
+          {(userStory.trim() || attachments.length > 0 || figmaUrl.trim()) && (
+            <div className="flex flex-wrap gap-2 p-3 bg-gray-50 rounded-lg">
+              <div className="text-xs text-gray-600 font-medium">Active inputs:</div>
+              {userStory.trim() && (
+                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs flex items-center space-x-1">
+                  <FileText className="w-3 h-3" />
+                  <span>User Story</span>
+                </span>
+              )}
+              {attachments.length > 0 && (
+                <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs flex items-center space-x-1">
+                  <Upload className="w-3 h-3" />
+                  <span>{attachments.length} File{attachments.length !== 1 ? 's' : ''}</span>
+                </span>
+              )}
+              {figmaUrl.trim() && !figmaUrlError && (
+                <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs flex items-center space-x-1">
+                  <Figma className="w-3 h-3" />
+                  <span>Figma Design</span>
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Generate Button */}
           <button
             onClick={handleGenerate}
-            className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
+            className={`w-full py-3 px-6 rounded-lg font-semibold disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2 ${
+              figmaUrl.trim() && !figmaUrlError 
+                ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+            }`}
             disabled={loading}
           >
             {loading ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Generating Test Cases...</span>
+                <span>
+                  {figmaUrl.trim() ? 'Analyzing Figma Design & Generating...' : 'Generating Test Cases...'}
+                </span>
               </>
             ) : (
               <>
@@ -376,16 +541,34 @@ export default function TestCaseGenerator() {
                       <span className="text-gray-500">Generated: </span>
                       <span className="text-gray-900 font-medium">{metadata.generated_count} test cases</span>
                     </div>
-                    {metadata.similar_examples_used && (
+                    {metadata.similar_examples_used > 0 && (
                       <div>
                         <span className="text-gray-500">Learning: </span>
                         <span className="text-green-600 font-medium">{metadata.similar_examples_used} examples used</span>
                       </div>
                     )}
-                    {metadata.enhanced_rag && (
+                    {metadata.rag_available && (
                       <div>
                         <span className="text-gray-500">AI Mode: </span>
                         <span className="text-purple-600 font-medium">Enhanced RAG</span>
+                      </div>
+                    )}
+                    {figmaUrl && (
+                      <div className="col-span-2 md:col-span-3">
+                        <span className="text-gray-500">Design Source: </span>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <Figma className="w-3 h-3 text-purple-600" />
+                          <a 
+                            href={figmaUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-purple-600 hover:text-purple-800 text-xs truncate max-w-xs"
+                            title={figmaUrl}
+                          >
+                            Figma Design Integrated
+                          </a>
+                          <ExternalLink className="w-3 h-3 text-gray-400" />
+                        </div>
                       </div>
                     )}
                   </div>
@@ -397,7 +580,7 @@ export default function TestCaseGenerator() {
                 {testCases.map((tc, idx) => (
                   <div key={idx} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-3 flex-wrap">
                         <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm font-medium">
                           {tc.id}
                         </span>
@@ -408,6 +591,15 @@ export default function TestCaseGenerator() {
                         }`}>
                           {tc.priority}
                         </span>
+                        {figmaUrl && (tc.title.toLowerCase().includes('ui') || 
+                         tc.title.toLowerCase().includes('button') || 
+                         tc.title.toLowerCase().includes('input') || 
+                         tc.title.toLowerCase().includes('component')) ? (
+                          <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs font-medium flex items-center space-x-1">
+                            <Figma className="w-3 h-3" />
+                            <span>Design-Based</span>
+                          </span>
+                        ) : null}
                       </div>
                     </div>
                     

@@ -1,4 +1,4 @@
-.PHONY: all backend frontend install-backend install-frontend setup-learning clean test dev
+.PHONY: all backend frontend install-backend install-frontend setup-learning clean test dev build build-frontend help
 
 # Backend commands
 install-backend:
@@ -27,7 +27,7 @@ setup: install-backend setup-learning install-frontend
 
 # Development mode (runs both backend and frontend)
 dev:
-	@echo "🚀 Starting TestForge full-stack development..."
+	@echo "🚀 Starting AI Test Case Generator development..."
 	@echo "Backend will run on http://localhost:8000"
 	@echo "Frontend will run on http://localhost:3000"
 	@trap 'kill %1; kill %2' SIGINT; \
@@ -46,11 +46,36 @@ build: setup-learning build-frontend
 # Clean up
 clean:
 	cd backend && rm -rf venv __pycache__ *.pyc
-	cd backend && rm -rf chroma_db  # Remove learning database
+	cd backend && rm -rf chroma_db
 	cd frontend && rm -rf node_modules build
+
+# Help command
+help:
+	@echo "🚀 AI Test Case Generator - Available Commands"
+	@echo "=============================================="
+	@echo ""
+	@echo "📦 Setup Commands:"
+	@echo "  make setup           - Complete full-stack setup"
+	@echo "  make install-backend - Install backend dependencies"
+	@echo "  make install-frontend- Install frontend dependencies"
+	@echo ""
+	@echo "🚀 Development Commands:"
+	@echo "  make dev             - Start both backend and frontend"
+	@echo "  make backend         - Start backend only"
+	@echo "  make frontend        - Start frontend only"
+	@echo ""
+	@echo "🧪 Testing Commands:"
+	@echo "  make test            - Test RAG system"
+	@echo ""
+	@echo "🏗️ Build Commands:"
+	@echo "  make build           - Production build"
+	@echo "  make build-frontend  - Build frontend only"
+	@echo ""
+	@echo "🧹 Maintenance Commands:"
+	@echo "  make clean           - Clean up build artifacts"
 
 # Legacy support
 all: setup dev
 
-# Quick start (recommended)
-# make setup && make dev
+# Default target
+.DEFAULT_GOAL := help

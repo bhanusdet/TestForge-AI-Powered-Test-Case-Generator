@@ -9,7 +9,7 @@ import {
   Shield, 
   Target,
   ArrowRight,
-  Sparkles
+  Figma
 } from 'lucide-react';
 
 const Home = () => {
@@ -18,6 +18,11 @@ const Home = () => {
       icon: Brain,
       title: 'AI-Powered Intelligence',
       description: 'Advanced RAG system with 78% better semantic understanding using state-of-the-art embeddings.'
+    },
+    {
+      icon: Figma,
+      title: 'Figma Design Integration',
+      description: 'Generate UI-focused test cases directly from your Figma designs. Extract components, interactions, and user flows automatically.'
     },
     {
       icon: TrendingUp,
@@ -38,11 +43,6 @@ const Home = () => {
       icon: Shield,
       title: 'Comprehensive Coverage',
       description: 'Positive, negative, edge, boundary, security, and performance test scenarios.'
-    },
-    {
-      icon: Sparkles,
-      title: 'Quality Evolution',
-      description: 'User feedback directly improves future test case generation accuracy.'
     }
   ];
 
@@ -67,7 +67,8 @@ const Home = () => {
             </h1>
             <p className="text-xl md:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto">
               Intelligent AI-powered system that generates comprehensive manual test cases 
-              from user stories and <span className="font-semibold text-blue-600">learns from every interaction</span>
+              from user stories, <span className="font-semibold text-purple-600">Figma designs</span>, and 
+              <span className="font-semibold text-blue-600"> learns from every interaction</span>
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
