@@ -254,7 +254,8 @@ def call_groq(prompt: str):
         "messages": [
             {"role": "user", "content": prompt}
         ],
-        "temperature": 0.0
+        "temperature": 2.0,
+        "reasoning_effort": "high"
     }
     
     try:
