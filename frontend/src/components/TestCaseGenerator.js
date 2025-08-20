@@ -91,7 +91,7 @@ export default function TestCaseGenerator() {
       { text: 'Fetching design context...', progress: 45 },
       { text: 'AI generating test scenarios...', progress: 70 },
       { text: 'Optimizing test coverage...', progress: 85 },
-      { text: 'Finalizing test cases...', progress: 95 }
+        { text: 'Finalizing Test Cases...', progress: 95 }
     ];
 
     let currentStage = 0;
@@ -111,13 +111,13 @@ export default function TestCaseGenerator() {
   const handleGenerate = async () => {
     // Check if at least one input is provided
     if (!userStory.trim() && attachments.length === 0 && !figmaUrl.trim()) {
-          toast.error("Please provide at least one input (user story, files, or Figma URL) to generate test cases!");
+            toast.error("Please provide at least one input (User Story, files, or Figma URL) to generate Test Cases!");
       return;
     }
 
     // Validate Figma URL if provided
     if (figmaUrl.trim() && !validateFigmaUrl(figmaUrl)) {
-          toast.error("Please provide a valid Figma URL");
+            toast.error("Please provide a valid Figma URL");
       return;
     }
 
@@ -153,17 +153,17 @@ export default function TestCaseGenerator() {
       // Complete the progress
       clearInterval(progressInterval);
       setLoadingProgress(100);
-      setLoadingStage('Test cases generated successfully!');
+        setLoadingStage('Test Cases generated successfully!');
 
       // Handle enhanced response format
       setTestCases(response.data.test_cases || []);
       setMetadata(response.data.metadata || null);
-          toast.success("Test cases generated!");
+            toast.success("Test Cases generated successfully!");
         } catch (error) {
           console.error(error);
           clearInterval(progressInterval);
           setLoadingStage('Generation failed. Please try again.');
-          toast.error("Failed to generate test cases");
+            toast.error("Failed to generate Test Cases");
         } finally {
       // Reset loading state after a brief delay to show completion
       setTimeout(() => {
@@ -188,7 +188,7 @@ export default function TestCaseGenerator() {
       };
 
       await axios.post(`${API_BASE}/feedback`, feedbackData);
-          toast.success("Thank you for your detailed feedback! This helps improve our AI.");
+            toast.success("Thank you for your feedback! This helps improve our AI.");
       setShowFeedback(false);
       
       // Reset all feedback states
@@ -198,7 +198,7 @@ export default function TestCaseGenerator() {
       setMissingScenarios('');
       setImprovedTestCases([]);
         } catch (error) {
-          toast.error("Failed to submit feedback");
+            toast.error("Failed to submit feedback");
           console.error('Feedback submission error:', error);
         }
   };
@@ -312,22 +312,36 @@ export default function TestCaseGenerator() {
   const copyToClipboard = () => {
     const text = JSON.stringify(testCases, null, 2);
     navigator.clipboard.writeText(text);
-        toast.success("Test cases copied to clipboard!");
+        toast.success("Test Cases copied to clipboard!");
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Simple Header */}
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold text-gray-900 mb-3">
-          AI Test Case Generator
-        </h1>
-        <p className="text-xl text-gray-600">
-          Provide one or more inputs below for better test case generation
-        </p>
-        <p className="text-sm text-gray-500 mt-2">
-          💡 Combine multiple inputs for more comprehensive test cases
-        </p>
+    <div className="relative min-h-screen">
+      {/* Advanced Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-gray-100 opacity-80">
+        {/* Subtle Grid Pattern */}
+        <div className="absolute inset-0" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23000000' fill-opacity='0.02' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E")`,
+        }}></div>
+        
+        {/* Floating Geometric Elements */}
+        <div className="absolute top-20 right-10 w-32 h-32 bg-gradient-to-br from-gray-200/30 to-gray-300/30 rounded-full animate-pulse" style={{animationDuration: '5s'}}></div>
+        <div className="absolute bottom-32 left-10 w-24 h-24 border border-gray-300/40 rotate-45 animate-bounce" style={{animationDuration: '4s'}}></div>
+        <div className="absolute top-1/2 left-1/4 w-16 h-16 bg-gradient-to-tr from-gray-200/20 to-gray-300/20 rounded-lg animate-pulse" style={{animationDelay: '2s'}}></div>
+      </div>
+
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Simple Header */}
+        <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold text-gray-900 mb-3">
+              CaseVector AI - Effortless Test Case Generation
+            </h1>
+            <p className="text-xl text-gray-600">
+              Provide one or more inputs below for better Test Case generation
+            </p>
+            <p className="text-sm text-gray-500 mt-2">
+              💡 Combine multiple inputs for more comprehensive Test Cases
+            </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -349,9 +363,9 @@ export default function TestCaseGenerator() {
 
           {/* Figma URL Input - Simplified */}
           <div>
-            <label className="block text-lg font-medium text-gray-800 mb-3">
-              Add Figma design link (optional)
-            </label>
+                <label className="block text-lg font-medium text-gray-800 mb-3">
+                  Add Figma Design Link (Optional)
+                </label>
             <input
               type="url"
               className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
@@ -377,7 +391,7 @@ export default function TestCaseGenerator() {
               multiple
               accept="image/*,application/pdf"
               onChange={handleFileUpload}
-              className="w-full text-sm text-gray-600 file:mr-4 file:py-3 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  className="w-full text-sm text-gray-600 file:mr-4 file:py-3 file:px-6 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200"
             />
 
             {/* Simple File List */}
@@ -403,10 +417,10 @@ export default function TestCaseGenerator() {
           {/* Enhanced Generate Button */}
           <button
             onClick={handleGenerate}
-            className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-300 flex items-center justify-center space-x-2 ${
+            className={`w-full py-4 px-6 rounded-lg font-medium text-lg transition-all duration-200 flex items-center justify-center space-x-2 ${
               loading
-                ? 'bg-gradient-to-r from-blue-500 to-purple-600 cursor-not-allowed text-white shadow-lg'
-                : 'bg-gradient-to-r from-blue-600 to-purple-700 hover:from-blue-700 hover:to-purple-800 text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
+                ? 'bg-gray-800 cursor-not-allowed text-white'
+                : 'bg-gray-900 hover:bg-gray-800 text-white'
             }`}
             disabled={loading}
           >
@@ -415,12 +429,12 @@ export default function TestCaseGenerator() {
                 <div className="relative">
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                 </div>
-                <span>Generating Test Cases...</span>
+                  <span>Generating Test Cases...</span>
               </>
             ) : (
               <>
                 <Sparkles className="w-5 h-5" />
-                <span>Generate Test Cases</span>
+                  <span>Generate Test Cases</span>
               </>
             )}
           </button>
@@ -435,7 +449,7 @@ export default function TestCaseGenerator() {
                 <div className="flex items-center space-x-2">
                   <CheckCircle className="w-6 h-6 text-green-500" />
                   <h3 className="text-xl font-semibold text-gray-900">
-                    Generated Test Cases
+                      Generated Test Cases
                   </h3>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -467,15 +481,15 @@ export default function TestCaseGenerator() {
 
               {/* Enhanced Metadata */}
               {metadata && (
-                <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 mb-6">
-                  <h4 className="font-medium text-gray-900 mb-2 flex items-center">
-                    <Brain className="w-4 h-4 mr-2 text-blue-600" />
+                  <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                    <h4 className="font-medium text-gray-900 mb-2 flex items-center">
+                      <Brain className="w-4 h-4 mr-2 text-gray-600" />
                     AI Generation Info
                   </h4>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                     <div>
                       <span className="text-gray-500">Generated: </span>
-                      <span className="text-gray-900 font-medium">{metadata.generated_count} test cases</span>
+                        <span className="text-gray-900 font-medium">{metadata.generated_count} Test Cases</span>
                     </div>
                     {metadata.similar_examples_used > 0 && (
                       <div>
@@ -501,7 +515,7 @@ export default function TestCaseGenerator() {
                             className="text-purple-600 hover:text-purple-800 text-xs truncate max-w-xs"
                             title={figmaUrl}
                           >
-                            Figma Design Integrated
+                              Figma Design Integrated
                           </a>
                           <ExternalLink className="w-3 h-3 text-gray-400" />
                         </div>
@@ -511,13 +525,13 @@ export default function TestCaseGenerator() {
                 </div>
               )}
 
-              {/* Test Cases - Card Layout (Better for readability) */}
+                {/* Test Cases - Card Layout (Better for readability) */}
               <div className="space-y-4">
                 {testCases.map((tc, idx) => (
                   <div key={idx} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center space-x-3 flex-wrap">
-                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm font-medium">
+                          <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-sm font-medium">
                           {tc.id}
                         </span>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -570,10 +584,10 @@ export default function TestCaseGenerator() {
             <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl transform transition-all duration-300 scale-100">
               {/* Header */}
               <div className="text-center mb-6">
-                <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mb-4">
+                  <div className="mx-auto w-16 h-16 bg-gray-900 rounded-full flex items-center justify-center mb-4">
                   <Brain className="w-8 h-8 text-white animate-pulse" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">AI Test Case Generation</h3>
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">AI Test Case Generation</h3>
                 <p className="text-gray-600">Please wait while our AI analyzes your requirements</p>
               </div>
 
@@ -587,7 +601,7 @@ export default function TestCaseGenerator() {
                 {/* Enhanced Progress Bar */}
                 <div className="relative w-full h-4 bg-gray-200 rounded-full overflow-hidden shadow-inner">
                   <div 
-                    className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 via-purple-500 to-blue-600 rounded-full transition-all duration-700 ease-out shadow-sm"
+                      className="absolute top-0 left-0 h-full bg-gray-900 rounded-full transition-all duration-700 ease-out"
                     style={{ width: `${loadingProgress}%` }}
                   >
                     {/* Multiple shimmer effects */}
@@ -599,18 +613,18 @@ export default function TestCaseGenerator() {
 
               {/* Current Stage */}
               <div className="mb-6">
-                <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-xl">
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                  </div>
-                  <span className="text-sm font-medium text-blue-800">{loadingStage}</span>
+                  <div className="flex items-center space-x-3 p-3 bg-gray-100 rounded-xl">
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-gray-600 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-gray-600 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                      <div className="w-2 h-2 bg-gray-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                    </div>
+                    <span className="text-sm font-medium text-gray-700">{loadingStage}</span>
                 </div>
               </div>
 
               {/* Loading Tips Carousel */}
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4">
+                <div className="bg-gray-50 rounded-xl p-4">
                 <div className="flex items-start space-x-3">
                   <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
                     <span className="text-white font-bold text-sm">💡</span>
@@ -728,24 +742,24 @@ export default function TestCaseGenerator() {
                 />
               </div>
 
-              {/* Improved Test Cases Section */}
+                {/* Improved Test Cases Section */}
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-3">
                   <label className="block text-sm font-medium text-gray-700">
-                    💡 Add Your Improved Test Cases (Optional)
+                      💡 Add Your Improved Test Cases (Optional)
                   </label>
                   <button
                     onClick={addImprovedTestCase}
                     className="text-sm bg-green-100 text-green-700 px-3 py-1 rounded hover:bg-green-200"
                   >
-                    + Add Test Case
+                      + Add Test Case
                   </button>
                 </div>
                 
                 {improvedTestCases.map((testCase, index) => (
                   <div key={index} className="border border-gray-200 rounded-lg p-4 mb-3 bg-gray-50">
                     <div className="flex justify-between items-center mb-2">
-                      <h4 className="font-medium text-gray-700">Test Case {index + 1}</h4>
+                        <h4 className="font-medium text-gray-700">Test Case {index + 1}</h4>
                       <button
                         onClick={() => removeImprovedTestCase(index)}
                         className="text-red-500 hover:text-red-700"
@@ -757,7 +771,7 @@ export default function TestCaseGenerator() {
                     <div className="grid grid-cols-1 gap-3">
                       <input
                         type="text"
-                        placeholder="Test Case Title"
+                          placeholder="Test Case Title"
                         value={testCase.title}
                         onChange={(e) => updateImprovedTestCase(index, 'title', e.target.value)}
                         className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
@@ -792,7 +806,7 @@ export default function TestCaseGenerator() {
               <div className="flex space-x-3">
                 <button
                   onClick={submitFeedback}
-                  className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all font-medium"
+                    className="flex-1 bg-gray-900 text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition-all font-medium"
                 >
                   🚀 Submit Enhanced Feedback
                 </button>
@@ -805,11 +819,12 @@ export default function TestCaseGenerator() {
               </div>
               
               <p className="text-xs text-gray-500 mt-3 text-center">
-                Your feedback directly improves our AI's ability to generate better test cases! 🙏
+                  Your feedback directly improves our AI's ability to generate better Test Cases! 🙏
               </p>
             </div>
           </div>
         )}
+      </div>
     </div>
   );
 }

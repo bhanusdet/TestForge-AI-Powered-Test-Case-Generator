@@ -17,7 +17,7 @@ import { toast } from 'react-toastify';
 const Documentation = () => {
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
-    toast.success('Copied to clipboard!');
+        toast.success('Copied to clipboard!');
   };
 
   const sections = [
@@ -26,7 +26,7 @@ const Documentation = () => {
       title: 'Quick Start',
       content: (
         <div className="space-y-4">
-          <p className="text-gray-600">Get started with TestForge in minutes:</p>
+            <p className="text-gray-600">Get started with CaseVector AI in minutes:</p>
           <div className="bg-gray-900 rounded-lg p-4 text-green-400 font-mono text-sm">
             <div className="flex items-center justify-between mb-2">
               <span># Clone and setup</span>
@@ -47,10 +47,10 @@ const Documentation = () => {
       title: 'API Usage',
       content: (
         <div className="space-y-4">
-          <p className="text-gray-600">Generate test cases using our REST API:</p>
+            <p className="text-gray-600">Generate Test Cases using our REST API:</p>
           <div className="bg-gray-900 rounded-lg p-4 text-green-400 font-mono text-sm">
             <div className="flex items-center justify-between mb-2">
-              <span># Generate test cases</span>
+                <span># Generate Test Cases</span>
               <button 
                 onClick={() => copyToClipboard(`curl -X POST http://localhost:8000/api/v1/generate-test-cases \\
   -H "Content-Type: application/json" \\
@@ -72,7 +72,7 @@ const Documentation = () => {
       title: 'Figma Integration',
       content: (
         <div className="space-y-4">
-          <p className="text-gray-600">Generate design-focused test cases from your Figma prototypes:</p>
+            <p className="text-gray-600">Generate design-focused Test Cases from your Figma prototypes:</p>
           <div className="bg-purple-50 rounded-lg p-4">
             <h4 className="font-semibold text-purple-900 mb-2">Features:</h4>
             <ul className="text-purple-800 text-sm space-y-1">
@@ -120,7 +120,7 @@ const Documentation = () => {
             <ul className="text-blue-800 text-sm space-y-1">
               <li>• Analyzes user story domain and complexity</li>
               <li>• Retrieves similar examples using advanced embeddings</li>
-              <li>• Generates context-aware test cases</li>
+                <li>• Generates context-aware Test Cases</li>
               <li>• Learns from user ratings and feedback</li>
             </ul>
           </div>
@@ -149,7 +149,7 @@ const Documentation = () => {
     {
       method: 'POST',
       path: '/api/v1/generate-test-cases',
-      description: 'Generate test cases from user story',
+          description: 'Generate Test Cases from User Story',
       color: 'green'
     },
     {
@@ -167,30 +167,45 @@ const Documentation = () => {
     {
       method: 'POST',
       path: '/api/v1/similar-stories',
-      description: 'Find similar user stories',
+          description: 'Find similar User Stories',
       color: 'orange'
     }
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-8"
-      >
-        <div className="flex justify-center mb-4">
-          <div className="p-3 bg-gradient-to-r from-purple-500 to-blue-600 rounded-xl">
-            <BookOpen className="w-8 h-8 text-white" />
+    <div className="relative min-h-screen">
+      {/* Advanced Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-gray-100 opacity-80">
+        {/* Documentation-themed Pattern */}
+        <div className="absolute inset-0" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23000000' fill-opacity='0.02'%3E%3Cpath d='M20 20h60v3H20zM20 30h40v3H20zM20 40h50v3H20zM20 50h35v3H20zM20 60h45v3H20zM20 70h30v3H20z'/%3E%3C/g%3E%3C/svg%3E")`,
+        }}></div>
+        
+        {/* Floating Doc Elements */}
+        <div className="absolute top-24 right-16 w-36 h-36 bg-gradient-to-br from-gray-200/15 to-gray-300/15 rounded-2xl animate-pulse" style={{animationDuration: '7s'}}></div>
+        <div className="absolute bottom-32 left-16 w-24 h-32 bg-gradient-to-tr from-gray-200/20 to-gray-300/20 rounded-lg animate-bounce" style={{animationDuration: '5s'}}></div>
+        <div className="absolute top-1/2 right-1/3 w-20 h-20 border border-gray-300/30 rounded-full animate-pulse" style={{animationDelay: '1s'}}></div>
+      </div>
+
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-8"
+        >
+          <div className="flex justify-center mb-4">
+            <div className="relative p-3 bg-gray-900 rounded-xl">
+              <div className="absolute inset-0 bg-gray-800 rounded-xl blur-lg opacity-40 animate-pulse"></div>
+              <BookOpen className="relative w-8 h-8 text-white" />
+            </div>
           </div>
-        </div>
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
           Documentation
         </h1>
-        <p className="text-lg text-gray-600">
-          Everything you need to know about TestForge AI
-        </p>
+            <p className="text-lg text-gray-600">
+              Everything you need to know about CaseVector AI
+            </p>
       </motion.div>
 
       {/* Main Sections */}
@@ -289,7 +304,7 @@ const Documentation = () => {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-semibold text-gray-900">Ready to get started?</h3>
-              <p className="text-sm text-gray-600">Try generating your first test cases</p>
+                <p className="text-sm text-gray-600">Try generating your first Test Cases</p>
             </div>
             <a
               href="/generate"
@@ -301,6 +316,7 @@ const Documentation = () => {
           </div>
         </div>
       </motion.div>
+      </div>
     </div>
   );
 };

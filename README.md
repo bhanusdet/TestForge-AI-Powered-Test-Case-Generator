@@ -1,7 +1,7 @@
-# AI Test Case Generator Project
+# CaseVector AI - Effortless Test Case Generation!
 
 ## Overview
-This project automates the generation, management, and improvement of software test cases using advanced AI, PDF, image processing, and **Figma design integration**. It features an interactive web frontend and a Python/Flask backend supporting LLMs, RAG, OCR, and design-driven test case generation.
+This project automates the generation, management, and improvement of software Test Cases using advanced AI, PDF, image processing, and **Figma Design integration**. It features an interactive web frontend and a Python/Flask backend supporting LLMs, RAG, OCR, and design-driven Test Case generation.
 
 ---
 
@@ -52,14 +52,14 @@ This project automates the generation, management, and improvement of software t
 ---
 
 ## Main Features
-- **Automated test case generation**: AI-based, supports user stories + PDF/image attachments
+- **Automated Test Case generation**: AI-based, supports User Stories + PDF/image attachments
 - **Figma integration**: Extract UI components and design patterns from Figma files for comprehensive testing
 - **RAG system**: Retrieval-augmented generation for smarter text case synthesis (ChromaDB-powered)
 - **Prompt engineering**: Modular advanced prompting with design-aware context
 - **LLM flexibility**: Works with Groq and OpenAI APIs
 - **PDF/image parsing**: Extracts text from complex docs/screenshots
 - **Requirement analysis**: Advanced requirement extraction and coverage analysis
-- **Feedback/learning**: User feedback improves future test cases
+- **Feedback/learning**: User feedback improves future Test Cases
 
 ---
 
@@ -81,14 +81,14 @@ This project automates the generation, management, and improvement of software t
 - **UI Components**: Buttons, inputs, dropdowns, modals, etc.
 - **Design Patterns**: Card layouts, forms, navigation patterns
 - **User Flows**: Multi-step interactions and component relationships
-- **Test Scenarios**: Suggested test cases based on component interactions
+- **Test Scenarios**: Suggested Test Cases based on component interactions
 
 ---
 
 ## API Endpoints
 
 ### Core Endpoints
-- `POST /api/v1/generate-test-cases` - Generate test cases (supports Figma URLs)
+- `POST /api/v1/generate-test-cases` - Generate Test Cases (supports Figma URLs)
 - `POST /api/v1/validate-figma` - Validate and preview Figma designs
 - `POST /api/v1/figma-components` - Get detailed component analysis
 - `POST /api/v1/analyze-requirements` - Analyze requirement coverage

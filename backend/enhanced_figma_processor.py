@@ -1,5 +1,5 @@
 """
-Enhanced Figma Image Processor for AI Test Case Generator
+Enhanced Figma Image Processor for CaseVector AI
 
 This module provides advanced Figma image processing capabilities including:
 - Screenshot capture from Figma designs

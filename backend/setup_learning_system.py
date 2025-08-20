@@ -12,7 +12,7 @@ from enhanced_rag_helper import rag_helper
 def setup_learning_system():
     """Initialize the learning system with sample data and configurations"""
     
-    print("🚀 Setting up Enhanced AI Test Case Generator Learning System...")
+    print("🚀 Setting up Enhanced CaseVector AI Learning System...")
     
     try:
         # 1. Initialize RAG helper with sample data
@@ -106,7 +106,7 @@ def test_api_endpoints():
 
 if __name__ == "__main__":
     print("=" * 70)
-    print("🤖 AI Test Case Generator - Enhanced Learning System Setup")
+    print("🤖 CaseVector AI - Enhanced Learning System Setup")
     print("=" * 70)
     
     success = setup_learning_system()
