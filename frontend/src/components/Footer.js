@@ -13,10 +13,10 @@ const Footer = () => {
           </div>
           
           <div className="flex items-center space-x-6">
-            <a
-              href="https://github.com/bhanusdet/TestForge-AI-Powered-Test-Case-Generator" 
-              target="_blank"
-              rel="noopener noreferrer"
+                <a
+                  href="https://github.com/bhanusdet/CaseVector-AI-Effortless-Test-Case-Generator"
+                  target="_blank"
+                  rel="noopener noreferrer"
               className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
             >
               <Github className="w-5 h-5" />

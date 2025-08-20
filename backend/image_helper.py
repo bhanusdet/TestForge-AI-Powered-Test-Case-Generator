@@ -1,5 +1,5 @@
 """
-Enhanced Image Helper for AI Test Case Generator
+Enhanced Image Helper for CaseVector AI
 
 Provides comprehensive image processing capabilities including:
 - OCR text extraction

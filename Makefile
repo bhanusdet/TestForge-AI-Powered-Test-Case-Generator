@@ -27,7 +27,7 @@ setup: install-backend setup-learning install-frontend
 
 # Development mode (runs both backend and frontend)
 dev:
-	@echo "🚀 Starting AI Test Case Generator development..."
+	@echo "🚀 Starting CaseVector AI development..."
 	@echo "Backend will run on http://localhost:8000"
 	@echo "Frontend will run on http://localhost:3000"
 	@trap 'kill %1; kill %2' SIGINT; \
@@ -51,7 +51,7 @@ clean:
 
 # Help command
 help:
-	@echo "🚀 AI Test Case Generator - Available Commands"
+	@echo "🚀 CaseVector AI - Available Commands"
 	@echo "=============================================="
 	@echo ""
 	@echo "📦 Setup Commands:"

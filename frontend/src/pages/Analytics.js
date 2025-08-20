@@ -27,7 +27,7 @@ const Analytics = () => {
         setStats(response.data);
       } catch (error) {
         console.error('Failed to fetch stats:', error);
-        toast.error('Failed to load analytics data');
+          toast.error('Failed to load Analytics data');
       } finally {
         setLoading(false);
       }
@@ -54,7 +54,7 @@ const Analytics = () => {
       title: 'Stories Learned',
       value: stats?.total_stories_learned || 0,
       color: 'blue',
-      description: 'User stories processed by AI'
+          description: 'User Stories processed by AI'
     },
     {
       icon: Star,
@@ -80,18 +80,33 @@ const Analytics = () => {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-8"
-      >
-        <div className="flex justify-center mb-4">
-          <div className="p-3 bg-gradient-to-r from-green-500 to-blue-600 rounded-xl">
-            <BarChart3 className="w-8 h-8 text-white" />
+    <div className="relative min-h-screen">
+      {/* Advanced Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-white to-gray-100 opacity-80">
+        {/* Diagonal Pattern */}
+        <div className="absolute inset-0" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.03'%3E%3Cpath d='M0 60L60 0V60H0z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }}></div>
+        
+        {/* Analytics-themed floating elements */}
+        <div className="absolute top-32 left-10 w-28 h-28 bg-gradient-to-br from-gray-200/20 to-gray-300/20 rounded-full animate-pulse" style={{animationDuration: '6s'}}></div>
+        <div className="absolute bottom-40 right-20 w-20 h-20 border-2 border-gray-300/30 rounded-lg rotate-12 animate-bounce" style={{animationDuration: '5s'}}></div>
+        <div className="absolute top-2/3 left-1/3 w-16 h-16 bg-gradient-to-tl from-gray-200/25 to-gray-300/25 transform rotate-45 animate-pulse" style={{animationDelay: '3s'}}></div>
+      </div>
+
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-8"
+        >
+          <div className="flex justify-center mb-4">
+            <div className="relative p-3 bg-gray-900 rounded-xl">
+              <div className="absolute inset-0 bg-gray-800 rounded-xl blur-lg opacity-40 animate-pulse"></div>
+              <BarChart3 className="relative w-8 h-8 text-white" />
+            </div>
           </div>
-        </div>
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
           Learning Analytics
         </h1>
@@ -105,10 +120,10 @@ const Analytics = () => {
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
           const colorClasses = {
-            blue: 'from-blue-500 to-blue-600 bg-blue-50 text-blue-600',
-            yellow: 'from-yellow-500 to-yellow-600 bg-yellow-50 text-yellow-600',
-            purple: 'from-purple-500 to-purple-600 bg-purple-50 text-purple-600',
-            green: 'from-green-500 to-green-600 bg-green-50 text-green-600'
+            blue: 'bg-gray-100 text-gray-700',
+            yellow: 'bg-gray-100 text-gray-700',
+            purple: 'bg-gray-100 text-gray-700',
+            green: 'bg-gray-100 text-gray-700'
           };
 
           return (
@@ -117,9 +132,9 @@ const Analytics = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="bg-white p-6 rounded-xl border border-gray-200 hover:shadow-lg transition-shadow"
+              className="bg-white p-8 rounded-lg border border-gray-100 hover:border-gray-200 transition-all duration-200"
             >
-              <div className={`w-12 h-12 rounded-lg flex items-center justify-center mb-4 ${colorClasses[stat.color].split(' ')[2]} ${colorClasses[stat.color].split(' ')[3]}`}>
+              <div className={`w-12 h-12 rounded-lg flex items-center justify-center mb-6 ${colorClasses[stat.color]}`}>
                 <Icon className="w-6 h-6" />
               </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-1">{stat.value}</h3>
@@ -154,7 +169,7 @@ const Analytics = () => {
             ></div>
           </div>
           <p className="text-xs text-gray-500">
-            The AI learns from each interaction to improve future test case generation
+              The AI learns from each interaction to improve future Test Case generation
           </p>
         </div>
       </motion.div>
@@ -229,6 +244,7 @@ const Analytics = () => {
           </div>
         </div>
       </motion.div>
+      </div>
     </div>
   );
 };

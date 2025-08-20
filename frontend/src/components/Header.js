@@ -22,13 +22,13 @@ const Header = () => {
           {/* Logo */}
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-2">
-              <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
+              <div className="p-2 bg-gray-900 rounded-lg">
                 <Zap className="w-6 h-6 text-white" />
               </div>
-              <div>
-                <span className="text-xl font-bold text-gray-900">TestForge</span>
-                <span className="text-sm text-gray-500 ml-2">AI</span>
-              </div>
+                  <div>
+                    <span className="text-xl font-semibold text-gray-900">CaseVector</span>
+                    <span className="text-sm text-gray-400 ml-2">AI</span>
+                  </div>
             </Link>
           </div>
 
@@ -42,7 +42,7 @@ const Header = () => {
                   to={item.href}
                   className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                     isActive(item.href)
-                      ? 'text-blue-600 bg-blue-50'
+                      ? 'text-gray-900 bg-gray-100'
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                   }`}
                 >

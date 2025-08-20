@@ -1,6 +1,6 @@
 {
-  "short_name": "TestForge",
-  "name": "TestForge AI Test Case Generator",
+  "short_name": "CaseVector",
+  "name": "CaseVector AI - Effortless Test Case Generation",
   "icons": [
     {
       "src": "favicon.ico",
@@ -10,6 +10,6 @@
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#3B82F6",
+  "theme_color": "#111827",
   "background_color": "#ffffff"
 }

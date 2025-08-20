@@ -1,7 +1,7 @@
 {
-  "name": "testforge-frontend",
+  "name": "casevector-frontend",
   "version": "1.0.0",
-  "description": "TestForge AI-Powered Test Case Generator Frontend",
+  "description": "CaseVector AI - Effortless Test Case Generation Frontend",
   "author": "Bhanu Pratap Singh",
   "private": true,
   "dependencies": {

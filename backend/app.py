@@ -1043,5 +1043,5 @@ if __name__ == '__main__':
         port = 8001
         print(f"⚠️ Port 8000 in use, using port {port} instead")
     
-    print(f"🚀 Starting AI Test Case Generator on http://localhost:{port}")
+    print(f"🚀 Starting CaseVector AI on http://localhost:{port}")
     app.run(debug=True, port=port, host='0.0.0.0')
