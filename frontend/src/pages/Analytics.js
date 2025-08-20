@@ -6,7 +6,6 @@ import {
   BarChart3, 
   TrendingUp, 
   Brain, 
-  Users, 
   FileText, 
   Clock,
   Target,
@@ -22,20 +21,21 @@ const Analytics = () => {
     : 'http://127.0.0.1:8000/api/v1';
 
   useEffect(() => {
-    fetchStats();
-  }, []);
+    const loadStats = async () => {
+      try {
+        const response = await axios.get(`${API_BASE}/learning-stats`);
+        setStats(response.data);
+      } catch (error) {
+        console.error('Failed to fetch stats:', error);
+        toast.error('Failed to load analytics data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadStats();
+  }, [API_BASE]);
 
-  const fetchStats = async () => {
-    try {
-      const response = await axios.get(`${API_BASE}/learning-stats`);
-      setStats(response.data);
-    } catch (error) {
-      console.error('Failed to fetch stats:', error);
-      toast.error('Failed to load analytics data');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) {
     return (

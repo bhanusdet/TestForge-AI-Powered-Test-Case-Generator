@@ -1,24 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import { motion } from 'framer-motion';
 import { 
-  FileText, 
-  Upload, 
   Loader2, 
-  CheckCircle, 
   Download,
   Copy,
   Star,
   Sparkles,
   X,
+  CheckCircle,
   Brain,
   Figma,
-  Link,
-  ExternalLink,
-  HelpCircle
+  ExternalLink
 } from 'lucide-react';
-import FigmaUrlHelper from './FigmaUrlHelper';
 
 export default function TestCaseGenerator() {
   const [userStory, setUserStory] = useState('');
@@ -27,6 +21,8 @@ export default function TestCaseGenerator() {
   const [testCases, setTestCases] = useState([]);
   const [metadata, setMetadata] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingStage, setLoadingStage] = useState('');
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackRating, setFeedbackRating] = useState(5);
   const [feedbackComment, setFeedbackComment] = useState('');
@@ -34,7 +30,7 @@ export default function TestCaseGenerator() {
   const [missingScenarios, setMissingScenarios] = useState('');
   const [improvedTestCases, setImprovedTestCases] = useState([]);
   const [figmaUrlError, setFigmaUrlError] = useState('');
-  const [showFigmaHelper, setShowFigmaHelper] = useState(false);
+  const fileInputRef = useRef(null);
 
   const API_BASE = process.env.NODE_ENV === 'production' 
     ? '/api/v1' 
@@ -46,7 +42,16 @@ export default function TestCaseGenerator() {
   };
 
   const removeFile = (index) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
+    setAttachments(prevAttachments => {
+      const newAttachments = prevAttachments.filter((_, i) => i !== index);
+      
+      // Clear the file input if no files remain
+      if (newAttachments.length === 0 && fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      
+      return newAttachments;
+    });
   };
 
   const validateFigmaUrl = (url) => {
@@ -78,19 +83,51 @@ export default function TestCaseGenerator() {
     validateFigmaUrl(url);
   };
 
+  // Loading progress simulation for better UX
+  const simulateLoadingProgress = () => {
+    const stages = [
+      { text: 'Analyzing your requirements...', progress: 15 },
+      { text: 'Processing attachments...', progress: 30 },
+      { text: 'Fetching design context...', progress: 45 },
+      { text: 'AI generating test scenarios...', progress: 70 },
+      { text: 'Optimizing test coverage...', progress: 85 },
+      { text: 'Finalizing test cases...', progress: 95 }
+    ];
+
+    let currentStage = 0;
+    const interval = setInterval(() => {
+      if (currentStage < stages.length) {
+        setLoadingStage(stages[currentStage].text);
+        setLoadingProgress(stages[currentStage].progress);
+        currentStage++;
+      } else {
+        clearInterval(interval);
+      }
+    }, 800);
+
+    return interval;
+  };
+
   const handleGenerate = async () => {
+    // Check if at least one input is provided
     if (!userStory.trim() && attachments.length === 0 && !figmaUrl.trim()) {
-      toast.error("❌ Please enter a story, upload files, or provide a Figma URL");
+          toast.error("Please provide at least one input (user story, files, or Figma URL) to generate test cases!");
       return;
     }
 
     // Validate Figma URL if provided
     if (figmaUrl.trim() && !validateFigmaUrl(figmaUrl)) {
-      toast.error("❌ Please provide a valid Figma URL");
+          toast.error("Please provide a valid Figma URL");
       return;
     }
 
     setLoading(true);
+    setLoadingProgress(0);
+    setLoadingStage('Initializing...');
+    
+    // Start progress simulation
+    const progressInterval = simulateLoadingProgress();
+
     try {
       const formData = new FormData();
       formData.append('story', userStory);
@@ -113,15 +150,27 @@ export default function TestCaseGenerator() {
 
       console.log("Raw API response:", response.data);
 
+      // Complete the progress
+      clearInterval(progressInterval);
+      setLoadingProgress(100);
+      setLoadingStage('Test cases generated successfully!');
+
       // Handle enhanced response format
       setTestCases(response.data.test_cases || []);
       setMetadata(response.data.metadata || null);
-      toast.success("✅ Test cases generated!");
-    } catch (error) {
-      console.error(error);
-      toast.error("❌ Failed to generate test cases");
-    } finally {
-      setLoading(false);
+          toast.success("Test cases generated!");
+        } catch (error) {
+          console.error(error);
+          clearInterval(progressInterval);
+          setLoadingStage('Generation failed. Please try again.');
+          toast.error("Failed to generate test cases");
+        } finally {
+      // Reset loading state after a brief delay to show completion
+      setTimeout(() => {
+        setLoading(false);
+        setLoadingProgress(0);
+        setLoadingStage('');
+      }, 1000);
     }
   };
 
@@ -139,7 +188,7 @@ export default function TestCaseGenerator() {
       };
 
       await axios.post(`${API_BASE}/feedback`, feedbackData);
-      toast.success("🙏 Thank you for your detailed feedback! This helps improve our AI.");
+          toast.success("Thank you for your detailed feedback! This helps improve our AI.");
       setShowFeedback(false);
       
       // Reset all feedback states
@@ -148,10 +197,10 @@ export default function TestCaseGenerator() {
       setFeedbackCategories([]);
       setMissingScenarios('');
       setImprovedTestCases([]);
-    } catch (error) {
-      toast.error("❌ Failed to submit feedback");
-      console.error('Feedback submission error:', error);
-    }
+        } catch (error) {
+          toast.error("Failed to submit feedback");
+          console.error('Feedback submission error:', error);
+        }
   };
 
   const toggleFeedbackCategory = (category) => {
@@ -263,169 +312,84 @@ export default function TestCaseGenerator() {
   const copyToClipboard = () => {
     const text = JSON.stringify(testCases, null, 2);
     navigator.clipboard.writeText(text);
-    toast.success("📋 Test cases copied to clipboard!");
+        toast.success("Test cases copied to clipboard!");
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-8"
-      >
-        <div className="flex justify-center mb-4">
-          <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl">
-            <Brain className="w-8 h-8 text-white" />
-          </div>
-        </div>
-        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+      {/* Simple Header */}
+      <div className="text-center mb-12">
+        <h1 className="text-4xl font-bold text-gray-900 mb-3">
           AI Test Case Generator
         </h1>
-        <p className="text-lg text-gray-600">
-          Transform your user stories and Figma designs into comprehensive test cases
+        <p className="text-xl text-gray-600">
+          Provide one or more inputs below for better test case generation
         </p>
-      </motion.div>
+        <p className="text-sm text-gray-500 mt-2">
+          💡 Combine multiple inputs for more comprehensive test cases
+        </p>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Input Section */}
-        <motion.div 
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="space-y-6"
-        >
+        <div className="space-y-8">
           {/* User Story Input */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              User Story
+            <label className="block text-lg font-medium text-gray-800 mb-3">
+              Describe what you want to test
             </label>
             <textarea
-              rows="6"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              rows="5"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-gray-700"
               value={userStory}
               onChange={(e) => setUserStory(e.target.value)}
-              placeholder="Enter your user story here..."
+              placeholder="Example: As a customer, I want to add products to my cart so that I can purchase multiple items at once."
             />
           </div>
 
-          {/* Figma URL Input */}
+          {/* Figma URL Input - Simplified */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <div className="flex items-center space-x-2">
-                <Figma className="w-4 h-4 text-purple-600" />
-                <span>Figma Design URL (Optional)</span>
-              </div>
-            </label>
-            <div className="space-y-3">
-              <div className="relative">
-                <input
-                  type="url"
-                  className={`w-full px-4 py-3 pl-10 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    figmaUrlError ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  value={figmaUrl}
-                  onChange={handleFigmaUrlChange}
-                  placeholder="https://www.figma.com/design/your-design-file..."
-                />
-                <Link className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
-                  <button
-                    onClick={() => setShowFigmaHelper(!showFigmaHelper)}
-                    className="text-gray-400 hover:text-gray-600"
-                    title="Show Figma URL helper"
-                  >
-                    <HelpCircle className="w-4 h-4" />
-                  </button>
-                  {figmaUrl && !figmaUrlError && (
-                    <a
-                      href={figmaUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-500 hover:text-blue-700"
-                      title="Open Figma design"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-                  )}
-                </div>
-              </div>
-
-              {showFigmaHelper && (
-                <FigmaUrlHelper onUrlSelect={(url) => {
-                  setFigmaUrl(url);
-                  validateFigmaUrl(url);
-                  setShowFigmaHelper(false);
-                }} />
-              )}
-            </div>
-            {figmaUrlError && (
-              <p className="mt-1 text-sm text-red-600">{figmaUrlError}</p>
-            )}
-            <div className="mt-2 text-xs text-gray-500 space-y-1">
-              <p>Enhance test cases with UI components from your Figma design.</p>
-              <details className="cursor-pointer">
-                <summary className="text-blue-600 hover:text-blue-800">
-                  View supported URL formats & setup
-                </summary>
-                <div className="mt-1 pl-2 border-l-2 border-gray-200 space-y-2">
-                  <div>
-                    <p className="font-medium text-gray-600">Supported URLs:</p>
-                    <p>• https://www.figma.com/file/ABC123/Your-Design</p>
-                    <p>• https://www.figma.com/design/ABC123/Your-Design</p>
-                    <p>• https://www.figma.com/design/ABC123/Design?node-id=123-456</p>
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-600">First time setup:</p>
-                    <p>• Get your Personal Access Token from 
-                      <a 
-                        href="https://www.figma.com/settings" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-purple-600 hover:text-purple-800 ml-1"
-                      >
-                        Figma Settings
-                        <ExternalLink className="w-3 h-3 inline ml-1" />
-                      </a>
-                    </p>
-                    <p>• Add it to your backend/.env file as FIGMA_ACCESS_TOKEN</p>
-                  </div>
-                </div>
-              </details>
-            </div>
-          </div>
-
-          {/* File Upload */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Upload Files (PDF or Image)
+            <label className="block text-lg font-medium text-gray-800 mb-3">
+              Add Figma design link (optional)
             </label>
             <input
+              type="url"
+              className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                figmaUrlError ? 'border-red-500' : 'border-gray-300'
+              }`}
+              value={figmaUrl}
+              onChange={handleFigmaUrlChange}
+              placeholder="https://www.figma.com/design/your-design-file..."
+            />
+            {figmaUrlError && (
+              <p className="text-sm text-red-600 mt-2">{figmaUrlError}</p>
+            )}
+          </div>
+
+          {/* File Upload - Simplified */}
+          <div>
+            <label className="block text-lg font-medium text-gray-800 mb-3">
+              Upload documents or images (optional)
+            </label>
+            <input
+              ref={fileInputRef}
               type="file"
               multiple
               accept="image/*,application/pdf"
               onChange={handleFileUpload}
-              className="mt-1 block w-full text-sm text-gray-500
-                file:mr-4 file:py-2 file:px-4 file:rounded-full
-                file:border-0 file:text-sm file:font-semibold
-                file:bg-blue-50 file:text-blue-700
-                hover:file:bg-blue-100"
+              className="w-full text-sm text-gray-600 file:mr-4 file:py-3 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
             />
 
-            {/* File List */}
+            {/* Simple File List */}
             {attachments.length > 0 && (
-              <div className="mt-4 space-y-2">
+              <div className="mt-3 space-y-2">
                 {attachments.map((file, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-2">
-                      <FileText className="w-5 h-5 text-gray-500" />
-                      <span className="text-sm text-gray-700">{file.name}</span>
-                      <span className="text-xs text-gray-500">
-                        ({(file.size / 1024 / 1024).toFixed(1)} MB)
-                      </span>
-                    </div>
+                  <div key={`${file.name}-${index}-${file.size}`} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                    <span className="text-sm text-gray-700">{file.name}</span>
                     <button
                       onClick={() => removeFile(index)}
-                      className="text-red-500 hover:text-red-700 p-1"
+                      className="text-red-500 hover:text-red-700"
+                      type="button"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -435,47 +399,23 @@ export default function TestCaseGenerator() {
             )}
           </div>
 
-          {/* Status Indicators */}
-          {(userStory.trim() || attachments.length > 0 || figmaUrl.trim()) && (
-            <div className="flex flex-wrap gap-2 p-3 bg-gray-50 rounded-lg">
-              <div className="text-xs text-gray-600 font-medium">Active inputs:</div>
-              {userStory.trim() && (
-                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs flex items-center space-x-1">
-                  <FileText className="w-3 h-3" />
-                  <span>User Story</span>
-                </span>
-              )}
-              {attachments.length > 0 && (
-                <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs flex items-center space-x-1">
-                  <Upload className="w-3 h-3" />
-                  <span>{attachments.length} File{attachments.length !== 1 ? 's' : ''}</span>
-                </span>
-              )}
-              {figmaUrl.trim() && !figmaUrlError && (
-                <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-xs flex items-center space-x-1">
-                  <Figma className="w-3 h-3" />
-                  <span>Figma Design</span>
-                </span>
-              )}
-            </div>
-          )}
 
-          {/* Generate Button */}
+          {/* Enhanced Generate Button */}
           <button
             onClick={handleGenerate}
-            className={`w-full py-3 px-6 rounded-lg font-semibold disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2 ${
-              figmaUrl.trim() && !figmaUrlError 
-                ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white'
-                : 'bg-blue-600 hover:bg-blue-700 text-white'
+            className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-300 flex items-center justify-center space-x-2 ${
+              loading
+                ? 'bg-gradient-to-r from-blue-500 to-purple-600 cursor-not-allowed text-white shadow-lg'
+                : 'bg-gradient-to-r from-blue-600 to-purple-700 hover:from-blue-700 hover:to-purple-800 text-white shadow-md hover:shadow-lg transform hover:scale-[1.02]'
             }`}
             disabled={loading}
           >
             {loading ? (
               <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>
-                  {figmaUrl.trim() ? 'Analyzing Figma Design & Generating...' : 'Generating Test Cases...'}
-                </span>
+                <div className="relative">
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                </div>
+                <span>Generating Test Cases...</span>
               </>
             ) : (
               <>
@@ -484,14 +424,10 @@ export default function TestCaseGenerator() {
               </>
             )}
           </button>
-        </motion.div>
+        </div>
 
         {/* Results Section */}
-        <motion.div 
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="space-y-6"
-        >
+        <div className="space-y-6">
           {testCases.length > 0 && (
             <div className="bg-white border border-gray-200 rounded-lg p-6">
               {/* Results Header */}
@@ -626,16 +562,82 @@ export default function TestCaseGenerator() {
               </div>
             </div>
           )}
-        </motion.div>
+                </div>
       </div>
+        {/* Enhanced Loading Modal */}
+        {loading && (
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl transform transition-all duration-300 scale-100">
+              {/* Header */}
+              <div className="text-center mb-6">
+                <div className="mx-auto w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mb-4">
+                  <Brain className="w-8 h-8 text-white animate-pulse" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">AI Test Case Generation</h3>
+                <p className="text-gray-600">Please wait while our AI analyzes your requirements</p>
+              </div>
+
+              {/* Progress Section */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-semibold text-gray-700">Progress</span>
+                  <span className="text-sm font-bold text-blue-600">{loadingProgress}%</span>
+                </div>
+                
+                {/* Enhanced Progress Bar */}
+                <div className="relative w-full h-4 bg-gray-200 rounded-full overflow-hidden shadow-inner">
+                  <div 
+                    className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 via-purple-500 to-blue-600 rounded-full transition-all duration-700 ease-out shadow-sm"
+                    style={{ width: `${loadingProgress}%` }}
+                  >
+                    {/* Multiple shimmer effects */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -skew-x-12 animate-pulse"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 animate-pulse" style={{animationDelay: '0.5s'}}></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Current Stage */}
+              <div className="mb-6">
+                <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-xl">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                  </div>
+                  <span className="text-sm font-medium text-blue-800">{loadingStage}</span>
+                </div>
+              </div>
+
+              {/* Loading Tips Carousel */}
+              <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4">
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-white font-bold text-sm">💡</span>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-800 mb-1">AI Processing</h4>
+                    <p className="text-sm text-gray-600 leading-relaxed">
+                      Our advanced AI is analyzing your inputs to generate comprehensive test scenarios covering edge cases, user flows, and business logic validation.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Estimated Time */}
+              <div className="mt-4 text-center">
+                <p className="text-xs text-gray-500">
+                  ⏱️ Estimated time: 10-30 seconds
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Enhanced Feedback Modal */}
         {showFeedback && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-            >
+              <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-semibold text-gray-900">🎯 Help Us Improve!</h3>
                 <button
@@ -805,7 +807,7 @@ export default function TestCaseGenerator() {
               <p className="text-xs text-gray-500 mt-3 text-center">
                 Your feedback directly improves our AI's ability to generate better test cases! 🙏
               </p>
-            </motion.div>
+            </div>
           </div>
         )}
     </div>
