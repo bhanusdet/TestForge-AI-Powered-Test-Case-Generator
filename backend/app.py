@@ -185,6 +185,10 @@ if not GROQ_API_KEY:
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 # If you ever switch to OpenAI: set OPENAI_API_KEY and change URL+headers accordingly.
 
+# Configuration for prompt engineering
+USE_OPTIMIZED_PROMPTS = os.getenv("USE_OPTIMIZED_PROMPTS", "true").lower() == "true"
+print(f"🚀 Prompt Engineering Mode: {'Optimized' if USE_OPTIMIZED_PROMPTS else 'Standard'}")
+
 # ---------- Enhanced Utility Functions ----------
 def build_enhanced_story_context(user_story: str) -> dict:
     """Build context information about the story for better prompting"""
@@ -282,14 +286,24 @@ def validate_and_filter_test_cases(test_cases: List[Dict], user_story: str) -> L
     Validate test cases against story requirements and filter out-of-scope ones
     """
     try:
-        from prompt_engineering import AdvancedPromptEngineer
+        # Use the same prompt engineering approach as configured
+        if USE_OPTIMIZED_PROMPTS:
+            try:
+                from optimized_prompt_engineering import OptimizedPromptEngineer as PromptEngineer
+                print("🚀 Using optimized validation")
+            except Exception:
+                from prompt_engineering import AdvancedPromptEngineer as PromptEngineer
+                print("✅ Using standard validation (optimized fallback)")
+        else:
+            from prompt_engineering import AdvancedPromptEngineer as PromptEngineer
+            print("✅ Using standard validation")
 
         # Extract requirements from story
-        story_requirements = AdvancedPromptEngineer.extract_requirements_from_story(user_story)
+        story_requirements = PromptEngineer.extract_requirements_from_story(user_story)
 
         validated_cases = []
         for test_case in test_cases:
-            validation_result = AdvancedPromptEngineer.validate_test_case_scope(
+            validation_result = PromptEngineer.validate_test_case_scope(
                 test_case, story_requirements
             )
 
@@ -313,6 +327,13 @@ def parse_testcases_from_text(content: str):
     """
     def clean(text):
         return text.replace("**", "").strip()
+    
+    def clean_id(text):
+        """Special cleaning for test case ID fields to remove common formatting issues"""
+        cleaned = text.replace("**", "").strip()
+        # Remove leading dashes that sometimes appear in LLM output
+        cleaned = cleaned.lstrip('-').strip()
+        return cleaned
 
     test_cases = []
     blocks = content.strip().split("\n\n")
@@ -330,7 +351,14 @@ def parse_testcases_from_text(content: str):
             if ":" in line:
                 # if we were reading previous field, flush it
                 if current_field and buffer:
-                    current_tc[current_field] = clean(" ".join(buffer))
+                    if current_field == "steps":
+                        # Preserve line breaks for test steps to maintain bullet point formatting
+                        current_tc[current_field] = clean("\n".join(buffer))
+                    elif current_field == "id":
+                        # Special cleaning for test case IDs to remove formatting issues
+                        current_tc[current_field] = clean_id(" ".join(buffer))
+                    else:
+                        current_tc[current_field] = clean(" ".join(buffer))
                     buffer = []
 
                 # detect field
@@ -367,7 +395,14 @@ def parse_testcases_from_text(content: str):
 
         # block finished -> flush buffer into current_field
         if current_field and buffer:
-            current_tc[current_field] = clean(" ".join(buffer))
+            if current_field == "steps":
+                # Preserve line breaks for test steps to maintain bullet point formatting
+                current_tc[current_field] = clean("\n".join(buffer))
+            elif current_field == "id":
+                # Special cleaning for test case IDs to remove formatting issues
+                current_tc[current_field] = clean_id(" ".join(buffer))
+            else:
+                current_tc[current_field] = clean(" ".join(buffer))
             buffer = []
 
     # end of blocks -> flush last tc
@@ -377,8 +412,15 @@ def parse_testcases_from_text(content: str):
     # Normalise: ensure each test case has required keys
     normalized = []
     for i, tc in enumerate(test_cases, start=1):
+        # Ensure ID is clean even if it was parsed with issues
+        tc_id = tc.get("id")
+        if tc_id:
+            tc_id = clean_id(tc_id)
+        if not tc_id or tc_id == "":
+            tc_id = f"TC_{i:03}"
+        
         normalized.append({
-            "id": tc.get("id") or f"TC_{i:03}",
+            "id": tc_id,
             "title": tc.get("title", ""),
             "preconditions": tc.get("preconditions", ""),
             "steps": tc.get("steps", ""),
@@ -565,14 +607,34 @@ def generate_test_cases():
     story_context = build_enhanced_story_context(full_story)
     
     try:
-        # Lazy import for cold start optimization
-        from prompt_engineering import AdvancedPromptEngineer
-        # Limit similar test cases to prevent payload bloat
-        limited_similar_cases = similar_test_cases[:3] if similar_test_cases else []
-        prompt = AdvancedPromptEngineer.build_enhanced_prompt(
-            full_story, limited_similar_cases, story_context
-        )
-        print("✅ Using enhanced prompt engineering")
+        # Choose prompt engineering based on configuration
+        if USE_OPTIMIZED_PROMPTS:
+            try:
+                from optimized_prompt_engineering import OptimizedPromptEngineer
+                # Limit similar test cases to prevent payload bloat
+                limited_similar_cases = similar_test_cases[:3] if similar_test_cases else []
+                prompt = OptimizedPromptEngineer.build_enhanced_prompt(
+                    full_story, limited_similar_cases, story_context
+                )
+                print("🚀 Using optimized prompt engineering")
+            except Exception as e:
+                print(f"⚠️ Optimized prompting failed, falling back to standard: {e}")
+                # Fallback to standard advanced prompting
+                from prompt_engineering import AdvancedPromptEngineer
+                limited_similar_cases = similar_test_cases[:3] if similar_test_cases else []
+                prompt = AdvancedPromptEngineer.build_enhanced_prompt(
+                    full_story, limited_similar_cases, story_context
+                )
+                print("✅ Using standard enhanced prompt engineering")
+        else:
+            # Use standard advanced prompting
+            from prompt_engineering import AdvancedPromptEngineer
+            # Limit similar test cases to prevent payload bloat
+            limited_similar_cases = similar_test_cases[:3] if similar_test_cases else []
+            prompt = AdvancedPromptEngineer.build_enhanced_prompt(
+                full_story, limited_similar_cases, story_context
+            )
+            print("✅ Using standard enhanced prompt engineering")
     except Exception as e:
         print(f"⚠️ Advanced prompting not available: {e}")
         # Basic prompt fallback with compression
